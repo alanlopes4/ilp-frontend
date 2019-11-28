@@ -118,18 +118,21 @@ newref(struct symbol *s)
 {
   
   struct symref *a = malloc(sizeof(struct symref));
-  
+  //printf("NEWREF\n");
   if(!a) {
     yyerror("out of space");
     exit(0);
   }
     a->nodetype = 'N';
     a->s = s;
-  //printf("NEWREF: %s\n", a->s->name);
 
   int p = lookupAST(a->s->name);
   if(p != -1)
     listaTipos[posicaoListaTipos++] = asttab[p].valuetype;
+  else{
+    printf("Erro de atribuição: a variavel %s nao foi declarada\n", a->s->name);
+    hasErro = 1;
+  }
 
 
 
