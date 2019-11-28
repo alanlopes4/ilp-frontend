@@ -4,6 +4,8 @@
 #  include "fb3-2.h"
 %}
 
+%locations
+
 %union {
   struct ast *a;  
   double d;

@@ -15,6 +15,14 @@ int hasErro = 0;
 int listaTipos[NHASH];
 int posicaoListaTipos = 0;
 
+//      ERROS
+int linha_erro = 0;
+int coluna_erro = 0;
+//usado para atulizar a linha e coluna do erro
+void atualizarLinhaColunaErro(int linha, int coluna) {
+    linha_erro = linha;
+    coluna_erro = coluna;
+}
 
 /* symbol table */
 /* hash a symbol */
@@ -130,7 +138,7 @@ newref(struct symbol *s)
   if(p != -1)
     listaTipos[posicaoListaTipos++] = asttab[p].valuetype;
   else{
-    printf("Erro de atribuição: a variavel %s nao foi declarada\n", a->s->name);
+    printf("Erro de atribuição: a variavel %s nao foi declarada (Linha: %d, Coluna: %d)\n", a->s->name, linha_erro, coluna_erro);
     hasErro = 1;
   }
 
@@ -171,7 +179,7 @@ newasgn(struct symbol *s, struct ast *v)
       
       //Se n tiverem o mesmo tipo (uma for inteiro  e a outra real)
       if(asttab[p].valuetype != isInteiro(eval(v))){
-        printf("Erro de atribuição, variável de tipo diferente!\n");
+        printf("Erro de atribuição, variável de tipo diferente (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro);
         a->v = asttab[p].a;
       }
       else{ //Caso tenha o mesmo tipo, precisamos verificar se ocorreu algum erro na operação. ex: b = a + 1.2
@@ -298,29 +306,29 @@ eval(struct ast *a)
     /* expressões */
   case '+': 
       if(validaTipos(eval(a->l), eval(a->r))==0){ 
-        yyerror("Operação com tipos incompatíveis"); 
+        yyerror("Operação com tipos incompatíveis (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro); 
         hasErro = 1;
       }
       else v = eval(a->l) + eval(a->r); 
     break;
   case '-':
      if(validaTipos(eval(a->l), eval(a->r))==0){
-        yyerror("Operação com tipos incompatíveis"); 
+        yyerror("Operação com tipos incompatíveis (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro); 
         hasErro = 1;
       }else v = eval(a->l) - eval(a->r); break;
   case '*':
      if(validaTipos(eval(a->l), eval(a->r))==0){
-        yyerror("Operação com tipos incompatíveis"); 
+        yyerror("Operação com tipos incompatíveis (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro); 
         hasErro = 1;
       }else v = eval(a->l) * eval(a->r); break;
   case '/': 
     if(validaTipos(eval(a->l), eval(a->r))==0){
-        yyerror("Operação com tipos incompatíveis"); 
+        yyerror("Operação com tipos incompatíveis (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro); 
         hasErro = 1;
       }else v = eval(a->l) / eval(a->r); break;
   case '^': 
     if(validaTipos(eval(a->l), eval(a->r))==0){
-        yyerror("Operação com tipos incompatíveis"); 
+        yyerror("Operação com tipos incompatíveis (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro); 
         hasErro = 1;
       }else v = pow(eval(a->l), eval(a->r)); break;
   case 'M': v = -eval(a->l); break;
@@ -370,6 +378,7 @@ yyerror(char *s, ...)
 
   fprintf(stderr, "%d: Erro: ", yylineno);
   vfprintf(stderr, s, ap);
+  fprintf(stderr, " (Linha: %d, Coluna: %d)\n", linha_erro, coluna_erro);
   fprintf(stderr, "\n");
 }
 

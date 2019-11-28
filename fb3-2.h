@@ -83,3 +83,7 @@ extern int debug;
 extern int posicao;
 void dumpast(struct ast *a, int level);
 
+//Usado para os erros
+void atualizarLinhaColunaErro(int linha, int coluna);
+
+
