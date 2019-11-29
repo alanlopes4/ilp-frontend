@@ -6,6 +6,8 @@
 #  include <math.h>
 #  include "fb3-2.h"
 
+FILE *yyin;
+
 //armazena a posicao no array da arvore
 int posicao = 0;
 int hasErro = 0;
@@ -385,8 +387,22 @@ yyerror(char *s, ...)
 int
 main()
 {
-  printf("> "); 
-  return yyparse();
+
+  FILE *arquivo;
+
+  //abrindo o arquivo_frase em modo "somente leitura"
+  arquivo = fopen("programa.txt", "r");  
+
+  //testando se o arquivo foi realmente criado
+  if(arquivo == NULL)
+  {
+      printf("Erro na abertura do arquivo!");
+      return 1;
+  }
+
+  yyin = arquivo;
+  return yyparse(); 
+
 }
 
 /* debugging: dump out an AST */

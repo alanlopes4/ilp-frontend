@@ -2,6 +2,7 @@
 #  include <stdio.h>
 #  include <stdlib.h>
 #  include "fb3-2.h"
+
 %}
 
 %locations
@@ -54,14 +55,14 @@ exp: exp '+' exp          {  $$ = newast('+', $1,$3);}
 calclist: /* nothing */
   | calclist stmt EOL {
      //dumpast($2, 0);
-     printf("> ");
+     //printf("> ");
      eval($2);
      //treefree($2);
     }
   | calclist PRINTAR stmt EOL {
     if(debug) dumpast($3, 0);
      
-     printf("= %4.4g\n> ", eval($3));
+     printf("%4.4g\n ", eval($3));
      //treefree($3);
     }
   | calclist ARVORE EOL {
@@ -69,9 +70,9 @@ calclist: /* nothing */
       if(strlen(asttab[i].name)>0)
         dumpast(asttab[i].a, 0);
     }
-    printf("> ");
+    //printf("> ");
   }
 
-  | calclist error EOL { yyerrok; printf("> "); }
+  | calclist error EOL { yyerrok; /*printf("> ");*/ }
  ;
 %%

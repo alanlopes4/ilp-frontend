@@ -68,7 +68,8 @@
 #  include <stdlib.h>
 #  include "fb3-2.h"
 
-#line 72 "fb3-2.tab.c" /* yacc.c:339  */
+
+#line 73 "fb3-2.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -117,13 +118,13 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 9 "fb3-2.y" /* yacc.c:355  */
+#line 10 "fb3-2.y" /* yacc.c:355  */
 
   struct ast *a;  
   double d;
   struct symbol *s;	
 
-#line 127 "fb3-2.tab.c" /* yacc.c:355  */
+#line 128 "fb3-2.tab.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -154,7 +155,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 158 "fb3-2.tab.c" /* yacc.c:358  */
+#line 159 "fb3-2.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -454,8 +455,8 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    38,    38,    41,    42,    43,    44,    45,    46,    47,
-      48,    49,    50,    54,    55,    61,    67,    75
+       0,    39,    39,    42,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    55,    56,    62,    68,    76
 };
 #endif
 
@@ -1335,107 +1336,107 @@ yyreduce:
   switch (yyn)
     {
         case 3:
-#line 41 "fb3-2.y" /* yacc.c:1646  */
+#line 42 "fb3-2.y" /* yacc.c:1646  */
     {  (yyval.a) = newast('+', (yyvsp[-2].a),(yyvsp[0].a));}
-#line 1341 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1342 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 42 "fb3-2.y" /* yacc.c:1646  */
+#line 43 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('-', (yyvsp[-2].a),(yyvsp[0].a));}
-#line 1347 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1348 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 43 "fb3-2.y" /* yacc.c:1646  */
+#line 44 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('*', (yyvsp[-2].a),(yyvsp[0].a)); }
-#line 1353 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1354 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 44 "fb3-2.y" /* yacc.c:1646  */
+#line 45 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('/', (yyvsp[-2].a),(yyvsp[0].a)); }
-#line 1359 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1360 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 45 "fb3-2.y" /* yacc.c:1646  */
+#line 46 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('^', (yyvsp[-2].a), (yyvsp[0].a)); }
-#line 1365 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1366 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 46 "fb3-2.y" /* yacc.c:1646  */
+#line 47 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = (yyvsp[-1].a); }
-#line 1371 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1372 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 47 "fb3-2.y" /* yacc.c:1646  */
+#line 48 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('M', (yyvsp[0].a), NULL); }
-#line 1377 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1378 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 48 "fb3-2.y" /* yacc.c:1646  */
+#line 49 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newnum((yyvsp[0].d)); }
-#line 1383 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1384 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 49 "fb3-2.y" /* yacc.c:1646  */
+#line 50 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newref((yyvsp[0].s)); }
-#line 1389 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1390 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 50 "fb3-2.y" /* yacc.c:1646  */
+#line 51 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newasgn((yyvsp[-2].s), (yyvsp[0].a)); }
-#line 1395 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1396 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 55 "fb3-2.y" /* yacc.c:1646  */
+#line 56 "fb3-2.y" /* yacc.c:1646  */
     {
      //dumpast($2, 0);
-     printf("> ");
+     //printf("> ");
      eval((yyvsp[-1].a));
      //treefree($2);
     }
-#line 1406 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1407 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 61 "fb3-2.y" /* yacc.c:1646  */
+#line 62 "fb3-2.y" /* yacc.c:1646  */
     {
     if(debug) dumpast((yyvsp[-1].a), 0);
      
-     printf("= %4.4g\n> ", eval((yyvsp[-1].a)));
+     printf("%4.4g\n ", eval((yyvsp[-1].a)));
      //treefree($3);
     }
-#line 1417 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1418 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 67 "fb3-2.y" /* yacc.c:1646  */
+#line 68 "fb3-2.y" /* yacc.c:1646  */
     {
     for(int i = 0; i < posicao; i++){
       if(strlen(asttab[i].name)>0)
         dumpast(asttab[i].a, 0);
     }
-    printf("> ");
+    //printf("> ");
   }
-#line 1429 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1430 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 75 "fb3-2.y" /* yacc.c:1646  */
-    { yyerrok; printf("> "); }
-#line 1435 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 76 "fb3-2.y" /* yacc.c:1646  */
+    { yyerrok; /*printf("> ");*/ }
+#line 1436 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1439 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1440 "fb3-2.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1670,5 +1671,5 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 77 "fb3-2.y" /* yacc.c:1906  */
+#line 78 "fb3-2.y" /* yacc.c:1906  */
 

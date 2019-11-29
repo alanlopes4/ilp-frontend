@@ -59,7 +59,7 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 9 "fb3-2.y" /* yacc.c:1909  */
+#line 10 "fb3-2.y" /* yacc.c:1909  */
 
   struct ast *a;  
   double d;
