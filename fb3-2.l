@@ -34,8 +34,8 @@ static void update_loc(){
 EXP	([Ee][-+]?[0-9]+) 
  
 %%
-"arvore" { atualizarLinhaColunaErro(yylloc.first_line, yylloc.first_column); return ARVORE; }
-"print" { atualizarLinhaColunaErro(yylloc.first_line, yylloc.first_column); return PRINTAR; }
+"arvore" { updateInfoErro(yylloc.first_line, yylloc.first_column); return ARVORE; }
+"print" { updateInfoErro(yylloc.first_line, yylloc.first_column); return PRINTAR; }
 
 "+" | 
 "-" |     
@@ -44,21 +44,20 @@ EXP	([Ee][-+]?[0-9]+)
 "^" |
 "=" |
 "(" | 
-")"     { atualizarLinhaColunaErro(yylloc.first_line, yylloc.first_column); return yytext[0]; }
+")"     { updateInfoErro(yylloc.first_line, yylloc.first_column); return yytext[0]; }
 
 
 
 
  /* nomes de variáveis */
-[a-zA-Z][a-zA-Z0-9]*  { yylval.s = lookup(yytext); atualizarLinhaColunaErro(yylloc.first_line, yylloc.first_column); return NAME; }
+[a-zA-Z][a-zA-Z0-9]*  { yylval.s = lookup(yytext); updateInfoErro(yylloc.first_line, yylloc.first_column); return NAME; }
 
 [0-9]+"."[0-9]*{EXP}? |
-"."?[0-9]+{EXP}? { yylval.d = atof(yytext); atualizarLinhaColunaErro(yylloc.first_line, yylloc.first_column); return NUMBER; }
+"."?[0-9]+{EXP}? { yylval.d = atof(yytext); updateInfoErro(yylloc.first_line, yylloc.first_column); return NUMBER; }
 
 "//".*  
 [ \t]   /* ignorando espaço em branco */ 
 \\\n    printf("c> "); /* ignora a continuação da linha */
 "\n"    { return EOL; }
-
 .	{ yyerror("O caracter não foi reconhecido"); }
 %%

@@ -19,24 +19,6 @@ struct reftab asttab[NHASH];
 
 struct symbol *lookup(char*);
 
-
-
-
-
-
-/* node types
- *  + - * / |
- *  M unary minus
- *  N symbol ref
- *  = assignment
- *  S list of symbols
- *  C user function call
- */ 
-
-
-/* nodes in the Abstract Syntax Tree */
-/* all have common initial nodetype */
-
 struct ast {
   int nodetype;
   struct ast *l;
@@ -69,21 +51,14 @@ struct ast *newasgn(struct symbol *s, struct ast *v);
 struct ast *newnum(double d);
 
 
-/* Avalia uma AST */
 double eval(struct ast *);
-
-/* Apaga e libera uma AST */
 void treefree(struct ast *);
-
-/* interface para o LEXER */
 extern int yylineno; /* from lexer */
 void yyerror(char *s, ...);
-
 extern int debug;
-extern int posicao;
+extern int position;
+extern void showAST();
 void dumpast(struct ast *a, int level);
-
-//Usado para os erros
-void atualizarLinhaColunaErro(int linha, int coluna);
+void updateInfoErro(int linha, int coluna);
 
 

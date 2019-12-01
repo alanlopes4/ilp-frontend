@@ -54,25 +54,22 @@ exp: exp '+' exp          {  $$ = newast('+', $1,$3);}
 
 calclist: /* nothing */
   | calclist stmt EOL {
-     //dumpast($2, 0);
-     //printf("> ");
      eval($2);
-     //treefree($2);
     }
   | calclist PRINTAR stmt EOL {
     if(debug) dumpast($3, 0);
-     
      printf("%4.4g\n ", eval($3));
-     //treefree($3);
     }
   | calclist ARVORE EOL {
-    for(int i = 0; i < posicao; i++){
+    for(int i = 0; i < position; i++){
       if(strlen(asttab[i].name)>0)
         dumpast(asttab[i].a, 0);
     }
-    //printf("> ");
   }
 
   | calclist error EOL { yyerrok; /*printf("> ");*/ }
+
  ;
+
+
 %%

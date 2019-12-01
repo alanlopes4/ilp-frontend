@@ -456,7 +456,7 @@ static const yytype_uint8 yytranslate[] =
 static const yytype_uint8 yyrline[] =
 {
        0,    39,    39,    42,    43,    44,    45,    46,    47,    48,
-      49,    50,    51,    55,    56,    62,    68,    76
+      49,    50,    51,    55,    56,    59,    63,    70
 };
 #endif
 
@@ -1398,45 +1398,39 @@ yyreduce:
   case 14:
 #line 56 "fb3-2.y" /* yacc.c:1646  */
     {
-     //dumpast($2, 0);
-     //printf("> ");
      eval((yyvsp[-1].a));
-     //treefree($2);
     }
-#line 1407 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1404 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 62 "fb3-2.y" /* yacc.c:1646  */
+#line 59 "fb3-2.y" /* yacc.c:1646  */
     {
     if(debug) dumpast((yyvsp[-1].a), 0);
-     
      printf("%4.4g\n ", eval((yyvsp[-1].a)));
-     //treefree($3);
     }
-#line 1418 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1413 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 68 "fb3-2.y" /* yacc.c:1646  */
+#line 63 "fb3-2.y" /* yacc.c:1646  */
     {
-    for(int i = 0; i < posicao; i++){
+    for(int i = 0; i < position; i++){
       if(strlen(asttab[i].name)>0)
         dumpast(asttab[i].a, 0);
     }
-    //printf("> ");
   }
-#line 1430 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1424 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 76 "fb3-2.y" /* yacc.c:1646  */
+#line 70 "fb3-2.y" /* yacc.c:1646  */
     { yyerrok; /*printf("> ");*/ }
-#line 1436 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1430 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1440 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1434 "fb3-2.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1671,5 +1665,5 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 78 "fb3-2.y" /* yacc.c:1906  */
+#line 75 "fb3-2.y" /* yacc.c:1906  */
 
