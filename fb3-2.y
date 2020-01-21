@@ -20,6 +20,7 @@
 %token <s> NAME
 %token <s> PRINTAR
 %token <s> ARVORE
+%token <s> ENDL
 %token EOL
 
 
@@ -29,15 +30,24 @@
 %left '*' '/'
 %nonassoc UMINUS
 
-%type <a> exp stmt
+%type <a> exp attr 
 
-%start calclist
+%start list
 
 %%
 
-stmt: 
-    exp  
-; 
+list:
+    item | item list 
+;
+item:
+    attr | print 
+;
+attr:
+    NAME '=' exp ENDL   { $$ = newasgn($1, $3); }
+;
+print:
+    PRINTAR exp ENDL 
+;
 
 exp: exp '+' exp          {  $$ = newast('+', $1,$3);}
    | exp '-' exp          { $$ = newast('-', $1,$3);}
@@ -48,31 +58,9 @@ exp: exp '+' exp          {  $$ = newast('+', $1,$3);}
    | '-' exp %prec UMINUS { $$ = newast('M', $2, NULL); } 
    | NUMBER               { $$ = newnum($1); }
    | NAME                 { $$ = newref($1); }
-   | NAME '=' exp         { $$ = newasgn($1, $3); }
+
 ;
 
 
-calclist: /* nothing */
-  | calclist stmt EOL {
-     //dumpast($2, 0);
-     //printf("> ");
-     eval($2);
-     //treefree($2);
-    }
-  | calclist PRINTAR stmt EOL {
-    if(debug) dumpast($3, 0);
-     
-     printf("%4.4g\n ", eval($3));
-     //treefree($3);
-    }
-  | calclist ARVORE EOL {
-    for(int i = 0; i < posicao; i++){
-      if(strlen(asttab[i].name)>0)
-        dumpast(asttab[i].a, 0);
-    }
-    //printf("> ");
-  }
 
-  | calclist error EOL { yyerrok; /*printf("> ");*/ }
- ;
 %%

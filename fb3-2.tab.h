@@ -49,8 +49,9 @@ extern int yydebug;
     NAME = 259,
     PRINTAR = 260,
     ARVORE = 261,
-    EOL = 262,
-    UMINUS = 263
+    ENDL = 262,
+    EOL = 263,
+    UMINUS = 264
   };
 #endif
 
@@ -65,7 +66,7 @@ union YYSTYPE
   double d;
   struct symbol *s;	
 
-#line 69 "fb3-2.tab.h" /* yacc.c:1909  */
+#line 70 "fb3-2.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

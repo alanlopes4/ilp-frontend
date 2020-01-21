@@ -1,3 +1,9 @@
+struct alloca{
+  int num_registrado;
+  int tipo; //1 - i32, 2 - double
+};
+
+
 /* symbol table */
 struct symbol {		/* a variable name */
   char *name;
@@ -16,26 +22,9 @@ struct reftab{
 #define NHASH 9997
 struct symbol symtab[NHASH];
 struct reftab asttab[NHASH];
+struct alloca allocatab[NHASH];
 
 struct symbol *lookup(char*);
-
-
-
-
-
-
-/* node types
- *  + - * / |
- *  M unary minus
- *  N symbol ref
- *  = assignment
- *  S list of symbols
- *  C user function call
- */ 
-
-
-/* nodes in the Abstract Syntax Tree */
-/* all have common initial nodetype */
 
 struct ast {
   int nodetype;
@@ -69,21 +58,16 @@ struct ast *newasgn(struct symbol *s, struct ast *v);
 struct ast *newnum(double d);
 
 
-/* Avalia uma AST */
 double eval(struct ast *);
-
-/* Apaga e libera uma AST */
 void treefree(struct ast *);
-
-/* interface para o LEXER */
 extern int yylineno; /* from lexer */
 void yyerror(char *s, ...);
-
 extern int debug;
-extern int posicao;
+extern int position;
+extern void showAST();
 void dumpast(struct ast *a, int level);
-
-//Usado para os erros
-void atualizarLinhaColunaErro(int linha, int coluna);
+void updateInfoErro(int linha, int coluna);
+int yyparse();
+int yylex();
 
 
