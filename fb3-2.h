@@ -1,6 +1,8 @@
 struct alloca{
   int num_registrado;
-  int tipo; //1 - i32, 2 - double
+  char *nome_variavel;
+  double valor_variavel;
+  int tipo; //0 - i32, 1 - double
 };
 
 

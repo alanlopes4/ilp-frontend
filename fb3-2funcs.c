@@ -436,7 +436,6 @@ int main()
   yyin = file;
 
   yyparse();
-  showAST();
 
   for (int i = 0; i < NHASH; i++)
   {
@@ -444,9 +443,10 @@ int main()
       printf("symtab name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
     if (asttab[i].name != NULL)
       printf("astab name: %s valuetype: %d nodetype:%d\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype);
-    }
+  }
 
   createFile();
+  showAST();
 }
 
 struct alocacao
@@ -502,6 +502,7 @@ void dumpast(struct ast *a, int level)
     return;
   case '-':
     printf("SUB\n");
+    writeSub();
     printf("op %c\n", a->nodetype);
     dumpast(a->l, level);
     dumpast(a->r, level);
@@ -577,9 +578,9 @@ void dumpast(struct ast *a, int level)
 }
 
 //#######################FUNÇÕES ESCRITA ######################
-char tipos[2][6] = {
-    "i32",
-    "double"};
+char tipos[2][10] = {
+    "double",
+    "i32"};
 
 void createFile()
 {
@@ -629,16 +630,6 @@ char *replaceWord(const char *s, const char *oldW,
   return result;
 }
 
-void replace_str(char *str, char *word, char *new_word)
-{
-  //char str[] = "This is a simple string";
-  char *pch;
-  pch = strstr(str, word);
-  strncpy(pch, new_word, strlen(word));
-  puts(str);
-  //return str;
-}
-
 void header()
 {
   char header[] = "target triple = 'x86_64-pc-linux-gnu'";
@@ -652,8 +643,14 @@ int countDECL()
   int count = 0;
   for (int i = 0; i < NHASH; i++)
   {
-    if (symtab[i].name != NULL)
+    if (asttab[i].name != NULL)
+    {
+      allocatab[lastNumberRegister].num_registrado = count;
+      allocatab[lastNumberRegister].tipo = asttab[i].valuetype;
+      allocatab[lastNumberRegister].nome_variavel = asttab[i].name;
       count++;
+      lastNumberRegister++;
+    }
     //printf("name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
   }
 
@@ -665,20 +662,22 @@ char *writeAlloc()
   char line[] = "REGISTRADOR0 = alloca TIPO0, align 4";
   return line;
 }
-
+int count = 0;
 void createAlloc()
 {
   //Realiza a contagem de alocações de acordo com a quantidade de declarações
-  int count = countDECL();
-  char *alloca;
+  count = countDECL();
   for (int i = 1; i <= count; i++)
   {
-    char s1[] = "\%REGISTRADOR0 = alloca TIPO0, align 4";
+
+    char s1[] = "\%REGISTRADOR0 = alloca TIPO0, align 4\n";
     char s2[] = "REGISTRADOR0";
+    char type0[] = "TIPO0";
     char s3[10];
     sprintf(s3, "%d", i);
-
-    printf("%s\n", replaceWord(s1, s2, s3));
+    char *final_line = replaceWord(s1, s2, s3);
+    final_line = replaceWord(final_line, type0, tipos[allocatab[i - 1].tipo]);
+    printf(final_line);
   }
 }
 
@@ -707,21 +706,55 @@ void writePow()
   char pow[] = "REGISTRADOR0 = xor TIPO0 REGISTRADOR1, REGISTRADOR2";
 }
 
-void writeLoad(char newW[], int type)
+int searchAllocaTab(char *name)
+{
+  for (int i = 0; i < count; i++)
+  {
+    if (strcmp(allocatab[i].nome_variavel, name) == 0)
+      return i;
+  }
+  return -1;
+}
+
+void writeLoad(char variable_name[], int type)
 {
   //printf("REGISTRADOR0 = load TIPO0 REGISTRADO1, TIPO1* REGISTRADOR2, align 4\n");
-  char load[] = "REGISTRADOR0 = load TIPO0, TIPO1* REGISTRADOR1, align 4";
+  char load[] = "%REGISTRADOR0 = load TIPO0, TIPO1* %REGISTRADOR1, align 4";
   char oldW[] = "REGISTRADOR1";
+  char oldW0[] = "REGISTRADOR0";
   char oldType1[] = "TIPO1";
-  char * final_line;
-  final_line = replaceWord(load, oldW, newW);
-  final_line = replaceWord(final_line, oldType1, tipos[type]);
+  char oldType0[] = "TIPO0";
+  char number_register[10];
+  char *final_line;
+  sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado+1);
+  final_line = replaceWord(load, oldW, number_register);
+  sprintf(number_register, "%d", ++lastNumberRegister);
+  final_line = replaceWord(final_line, oldW0, number_register);
+  final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+  final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
   printf(final_line);
 }
 
-void writeStore()
+
+void writeStore(char * variable_name)
 {
+  //printf("REGISTRADOR0 = load TIPO0 REGISTRADO1, TIPO1* REGISTRADOR2, align 4\n");
   char store[] = "store TIPO0 REGISTRADOR0, TIPO1* REGISTRADOR1, align 4";
+  char oldW[] = "REGISTRADOR1";
+  char oldW0[] = "REGISTRADOR0";
+  char oldType1[] = "TIPO1";
+  char oldType0[] = "TIPO0";
+  char number_register[10];
+  char *final_line;
+
+
+  sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado+1);
+  final_line = replaceWord(store, oldW, number_register);
+  sprintf(number_register, "%d", ++lastNumberRegister);
+  final_line = replaceWord(final_line, oldW0, number_register);
+  final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+  final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+  printf(final_line);
 }
 
 void writeRet()
