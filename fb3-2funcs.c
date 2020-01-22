@@ -17,6 +17,7 @@ int positionAlloca = 0;
 
 int line = 0;
 int column = 0;
+int lastNumberRegister = 0;
 
 int isInteger(double num)
 {
@@ -436,6 +437,15 @@ int main()
 
   yyparse();
   showAST();
+
+  for (int i = 0; i < NHASH; i++)
+  {
+    if (symtab[i].name != NULL)
+      printf("symtab name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
+    if (asttab[i].name != NULL)
+      printf("astab name: %s valuetype: %d nodetype:%d\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype);
+    }
+
   createFile();
 }
 
@@ -470,7 +480,9 @@ void dumpast(struct ast *a, int level)
     /* nome de variável */
   case 'N': //printf("ref %s\n", ((struct symref *)a)->s->name);
     printf("Nome variável\n");
-    dumpast(searchAST(((struct symref *)a)->s->name), level);
+    writeLoad(((struct symref *)a)->s->name, ((struct symref *)a)->s->valuetype);
+
+    //dumpast(searchAST(((struct symref *)a)->s->name), level);
     break;
 
     /* declaração */
@@ -630,7 +642,7 @@ void replace_str(char *str, char *word, char *new_word)
 void header()
 {
   char header[] = "target triple = 'x86_64-pc-linux-gnu'";
-  char header2[] = "define TIPO0 @main() #0 {";
+  char header2[] = "define i32 @main() #0 {";
   printf("%s\n", header);
   printf("%s\n", header2);
 }
@@ -695,9 +707,16 @@ void writePow()
   char pow[] = "REGISTRADOR0 = xor TIPO0 REGISTRADOR1, REGISTRADOR2";
 }
 
-void writeLoad()
+void writeLoad(char newW[], int type)
 {
-  char load[] = "REGISTRADOR0 = load TIPO0 REGISTRADO1, TIPO1* REGISTRADOR2, align 4";
+  //printf("REGISTRADOR0 = load TIPO0 REGISTRADO1, TIPO1* REGISTRADOR2, align 4\n");
+  char load[] = "REGISTRADOR0 = load TIPO0, TIPO1* REGISTRADOR1, align 4";
+  char oldW[] = "REGISTRADOR1";
+  char oldType1[] = "TIPO1";
+  char * final_line;
+  final_line = replaceWord(load, oldW, newW);
+  final_line = replaceWord(final_line, oldType1, tipos[type]);
+  printf(final_line);
 }
 
 void writeStore()
