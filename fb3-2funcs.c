@@ -18,6 +18,7 @@ int positionAlloca = 0;
 int line = 0;
 int column = 0;
 int lastNumberRegister = 0;
+int availableRegister = 1;
 
 int isInteger(double num)
 {
@@ -45,10 +46,19 @@ void insertASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
   position++;
 }
 
-void isertAllocaTab()
+void insertAllocaTab(struct symasgn *a, int pos, char nome)
 {
-  allocatab[positionAlloca].num_registrado = positionAlloca;
-  allocatab[positionAlloca].tipo = 1;
+  allocatab[pos].nome_variavel = nome;
+  allocatab[pos].num_registrado = pos;
+  allocatab[pos].tipo = isInteger(eval(a->v));
+  allocatab[pos].valor_variavel = eval(a->v);
+}
+
+void isertAllocaTab(int tipo, double valor)
+{
+  allocatab[lastNumberRegister].num_registrado = lastNumberRegister;
+  allocatab[lastNumberRegister].tipo = tipo;
+  allocatab[lastNumberRegister].valor_variavel = valor;
 }
 
 void showErro(char *erro)
@@ -172,7 +182,9 @@ void showAST()
   for (int i = 0; i < position; i++)
   {
     if (strlen(asttab[i].name) > 0)
+    {
       dumpast(asttab[i].a, 0);
+    }
   }
 }
 
@@ -292,11 +304,35 @@ newasgn(struct symbol *s, struct ast *v)
   return (struct ast *)a;
 }
 
+int isVariableOrNumber(struct ast *a)
+{
+  if (!a)
+  {
+    return -1;
+  }
+  switch (a->nodetype)
+  {
+  case 'K':
+    return 1;
+    break;
+  case 'N':
+    return 2;
+    break;
+  default:
+    return -1;
+    break;
+  }
+}
+
+char *getNameVariable(struct ast *a)
+{
+  return ((struct symref *)a)->s->name;
+}
+
 double
 eval(struct ast *a)
 {
   double v;
-
   if (!a)
   {
     yyerror("Erro interno, EVAL recebendo arvore NULA");
@@ -440,9 +476,11 @@ int main()
   for (int i = 0; i < NHASH; i++)
   {
     if (symtab[i].name != NULL)
-      printf("symtab name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
+      ;
+    //printf("symtab name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
     if (asttab[i].name != NULL)
-      printf("astab name: %s valuetype: %d nodetype:%d\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype);
+      ;
+    //printf("astab name: %s valuetype: %d nodetype:%d\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype);
   }
 
   createFile();
@@ -473,37 +511,37 @@ void dumpast(struct ast *a, int level)
   {
     /* constante */
   case 'K':
-    printf("Constante:");
-    printf("%4.4g\n", ((struct numval *)a)->number);
+    //printf("Constante:");
+    //printf("%4.4g\n", ((struct numval *)a)->number);
     break;
 
     /* nome de variável */
   case 'N': //printf("ref %s\n", ((struct symref *)a)->s->name);
-    printf("Nome variável\n");
-    writeLoad(((struct symref *)a)->s->name, ((struct symref *)a)->s->valuetype);
+    //printf("Nome variável\n");
+    //writeLoad(((struct symref *)a)->s->name, ((struct symref *)a)->s->valuetype);
 
     //dumpast(searchAST(((struct symref *)a)->s->name), level);
     break;
 
     /* declaração */
   case '=':
-    printf("Declaracao\n");
-    printf("= %s\n", ((struct symref *)a)->s->name);
+    //printf("Declaracao\n");
+    //printf("= %s\n", ((struct symref *)a)->s->name);
     dumpast(((struct symasgn *)a)->v, level);
     return;
 
     /* expressões */
   case '+':
     printf("SOMA\n");
-    writeSum();
+    writeSum(a);
     printf("op %c\n", a->nodetype);
     dumpast(a->l, level);
     dumpast(a->r, level);
     return;
   case '-':
-    printf("SUB\n");
-    writeSub();
-    printf("op %c\n", a->nodetype);
+    //printf("SUB\n");
+    writeSub(a);
+    //printf("op %c\n", a->nodetype);
     dumpast(a->l, level);
     dumpast(a->r, level);
     return;
@@ -686,9 +724,55 @@ void writeSum()
   char sum[] = "REGISTRADOR0 = add nsw TIPO0 REGISTRADOR1, REGISTRADOR2";
 }
 
-void writeSub()
+void writeSub(struct ast *a)
 {
-  char sub[] = "REGISTRADOR0 = sub nsw TIPO0 REGISTRADOR1, REGISTRADOR2";
+  int tipo1 = isVariableOrNumber(a->l);
+  int tipo2 = isVariableOrNumber(a->r);
+  //printf("L:%d R:%d\n", tipo1, tipo2);
+
+  char sub[] = "%REGISTRADOR0 = sub nsw TIPO0 %REGISTRADOR1, REGISTRADOR2\n";
+  char oldW0[] = "REGISTRADOR0";
+  char oldW1[] = "REGISTRADOR1";
+  char oldW2[] = "REGISTRADOR2";
+  char oldType1[] = "TIPO1";
+  char oldType0[] = "TIPO0";
+  char number_register[10];
+  char value[10];
+  char *final_line;
+
+  //Se os dos lados da operação forem constantes
+  if (tipo1 == 1 && tipo2 == 1)
+  {
+    writeStore(a, 2, 1);
+  }
+  else if (tipo1 == 2 && tipo2 == 1) //Variavel lado esquerdo
+  {
+    writeLoad(a, 1);
+    sprintf(number_register, "%d", ++lastNumberRegister);
+    final_line = replaceWord(sub, oldW0, number_register);
+    final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(getNameVariable(a->l))].tipo]);
+    sprintf(number_register, "%d", lastNumberRegister - 1);
+    final_line = replaceWord(final_line, oldW1, number_register);
+    sprintf(value, "%.2lf", eval(a->r));
+    final_line = replaceWord(final_line, oldW2, value);
+    printf(final_line);
+    writeStore(a, 2, 4);
+  }
+  else if (tipo1 == 1 && tipo2 == 2) //Variavel lado direito
+  {
+    writeLoad(a, 2);
+    sprintf(number_register, "%d", ++lastNumberRegister);
+    final_line = replaceWord(sub, oldW0, number_register);
+    final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(getNameVariable(a->r))].tipo]);
+    sprintf(number_register, "%d", lastNumberRegister - 1);
+    final_line = replaceWord(final_line, oldW1, number_register);
+    sprintf(value, "%.2lf", eval(a->l));
+    final_line = replaceWord(final_line, oldW2, value);
+    printf(final_line);
+    writeStore(a, 2, 3);
+  }
+
+  //final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
 }
 
 void writeMul()
@@ -716,45 +800,119 @@ int searchAllocaTab(char *name)
   return -1;
 }
 
-void writeLoad(char variable_name[], int type)
+//side - 1 = esquerdo, 2 = direito, 3 = ambos
+void writeLoad(struct ast *a, int side)
 {
+
   //printf("REGISTRADOR0 = load TIPO0 REGISTRADO1, TIPO1* REGISTRADOR2, align 4\n");
-  char load[] = "%REGISTRADOR0 = load TIPO0, TIPO1* %REGISTRADOR1, align 4";
+  char load[] = "%REGISTRADOR0 = load TIPO0, TIPO1* %REGISTRADOR1, align 4\n";
   char oldW[] = "REGISTRADOR1";
   char oldW0[] = "REGISTRADOR0";
   char oldType1[] = "TIPO1";
   char oldType0[] = "TIPO0";
   char number_register[10];
   char *final_line;
-  sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado+1);
-  final_line = replaceWord(load, oldW, number_register);
-  sprintf(number_register, "%d", ++lastNumberRegister);
-  final_line = replaceWord(final_line, oldW0, number_register);
-  final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
-  final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+  int tipo = -1;
+  double valor = 0.0;
+
+  if (side == 1)
+  {
+    char *variable_name = getNameVariable(a->l);
+    sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado + 1);
+    final_line = replaceWord(load, oldW, number_register);
+    sprintf(number_register, "%d", ++lastNumberRegister);
+    final_line = replaceWord(final_line, oldW0, number_register);
+    final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+    final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+    isertAllocaTab(allocatab[searchAllocaTab(variable_name)].tipo, allocatab[searchAllocaTab(variable_name)].valor_variavel);
+  }
+  if (side == 2)
+  {
+    char *variable_name = getNameVariable(a->r);
+    sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado + 1);
+    final_line = replaceWord(load, oldW, number_register);
+    sprintf(number_register, "%d", ++lastNumberRegister);
+    final_line = replaceWord(final_line, oldW0, number_register);
+
+    final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+    final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
+    isertAllocaTab(allocatab[searchAllocaTab(variable_name)].tipo, allocatab[searchAllocaTab(variable_name)].valor_variavel);
+  }
+
   printf(final_line);
 }
 
-
-void writeStore(char * variable_name)
+double executarOperacao(struct ast *a, int operacao)
+{
+  double v;
+  switch (operacao)
+  {
+  case 1: //SOMA
+    v = eval(a->l) + eval(a->r);
+    break;
+  case 2:
+    v = (eval(a->l) - eval(a->r));
+    break;
+  default:
+    v = 0.0;
+    break;
+  }
+  return v;
+}
+//situacao: 1 - ambas constantes, 2 - ambas variaveis; 3-L:constante e R:variavel, 4-L:variavel e R:constante
+void writeStore(struct ast *a, int operacao, int situacao)
 {
   //printf("REGISTRADOR0 = load TIPO0 REGISTRADO1, TIPO1* REGISTRADOR2, align 4\n");
-  char store[] = "store TIPO0 REGISTRADOR0, TIPO1* REGISTRADOR1, align 4";
+  char store[] = "store TIPO0 %REGISTRADOR0, TIPO1* %REGISTRADOR1, align 4\n";
   char oldW[] = "REGISTRADOR1";
   char oldW0[] = "REGISTRADOR0";
   char oldType1[] = "TIPO1";
   char oldType0[] = "TIPO0";
   char number_register[10];
+  char number_result[10];
   char *final_line;
 
+  if (situacao == 1) //Ambas são constantes
+  {
+    double result = executarOperacao(a, operacao);
+    final_line = replaceWord(store, oldType0, tipos[isInteger(result)]);
+    final_line = replaceWord(final_line, oldType1, tipos[isInteger(result)]);
+    sprintf(number_register, "%d", availableRegister++);
+    final_line = replaceWord(final_line, oldW, number_register);
+    sprintf(number_result, "%.2lf", result);
+    final_line = replaceWord(final_line, oldW0, number_result);
+    printf(final_line);
+  }
+  else if (situacao == 3)
+  { //variavel do lado direito
 
-  sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado+1);
+    final_line = replaceWord(store, oldType0, tipos[allocatab[lastNumberRegister].tipo]);
+    final_line = replaceWord(final_line, oldType1, tipos[allocatab[lastNumberRegister].tipo]);
+    sprintf(number_register, "%d", lastNumberRegister);
+    final_line = replaceWord(final_line, oldW0, number_register);
+    sprintf(number_register, "%d", availableRegister++);
+    final_line = replaceWord(final_line, oldW, number_register);
+    printf(final_line);
+  }
+  else if (situacao == 4)
+  { //variavel do lado esquerdo
+
+    final_line = replaceWord(store, oldType0, tipos[allocatab[lastNumberRegister].tipo]);
+    final_line = replaceWord(final_line, oldType1, tipos[allocatab[lastNumberRegister].tipo]);
+    sprintf(number_register, "%d", lastNumberRegister);
+    final_line = replaceWord(final_line, oldW0, number_register);
+    sprintf(number_register, "%d", availableRegister++);
+    final_line = replaceWord(final_line, oldW, number_register);
+    printf(final_line);
+  }
+
+  /*sprintf(number_register, "%d", allocatab[searchAllocaTab(variable_name)].num_registrado + 1);
   final_line = replaceWord(store, oldW, number_register);
   sprintf(number_register, "%d", ++lastNumberRegister);
   final_line = replaceWord(final_line, oldW0, number_register);
   final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
   final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
-  printf(final_line);
+  printf(final_line);*/
 }
 
 void writeRet()

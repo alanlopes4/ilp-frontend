@@ -6,10 +6,9 @@ int main(){
 
     int a = 1 - 2;
     int b = a - 4;
-    int c = a - b;
+    int c = 1 - b;
+    int e = a + b;
+    double d = 3.4;
 
-    float a = 1 - 2;
-    float b = a - 4;
-    float c = a - b;
 
 }
