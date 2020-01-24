@@ -19,6 +19,7 @@ int line = 0;
 int column = 0;
 int lastNumberRegister = 0;
 int availableRegister = 1;
+int countRegisters = 0;
 
 int isInteger(double num)
 {
@@ -46,19 +47,21 @@ void insertASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
   position++;
 }
 
-void insertAllocaTab(struct symasgn *a, int pos, char nome)
+void insertAllocaTab(int tipo, double valor, int numRegistrador)
 {
-  allocatab[pos].nome_variavel = nome;
-  allocatab[pos].num_registrado = pos;
-  allocatab[pos].tipo = isInteger(eval(a->v));
-  allocatab[pos].valor_variavel = eval(a->v);
+  printf("insert reg: %d, tipo: %d, valor: %lf\n", numRegistrador, tipo, valor);
+  allocatab[numRegistrador - 1].num_registrado = numRegistrador;
+  allocatab[numRegistrador - 1].tipo = tipo;
+  allocatab[numRegistrador - 1].valor_variavel = valor;
 }
 
-void isertAllocaTab(int tipo, double valor)
+void insertNewAllocaTab(int tipo, double valor, int numRegistrador)
 {
-  allocatab[lastNumberRegister].num_registrado = lastNumberRegister;
-  allocatab[lastNumberRegister].tipo = tipo;
-  allocatab[lastNumberRegister].valor_variavel = valor;
+  printf("insert reg: %d, tipo: %d, valor: %lf\n", numRegistrador, tipo, valor);
+  allocatab[countRegisters].num_registrado = numRegistrador;
+  allocatab[countRegisters].tipo = tipo;
+  allocatab[countRegisters].valor_variavel = valor;
+  countRegisters++;
 }
 
 void showErro(char *erro)
@@ -183,7 +186,8 @@ void showAST()
   {
     if (strlen(asttab[i].name) > 0)
     {
-      dumpast(asttab[i].a, 0);
+      int reg = converter(asttab[i].a);
+      //dumpast(asttab[i].a, 0);
     }
   }
 }
@@ -408,6 +412,95 @@ eval(struct ast *a)
   }
   return v;
 }
+int countDECL()
+{
+  int count = 0;
+  for (int i = 0; i < NHASH; i++)
+  {
+    if (asttab[i].name != NULL)
+    {
+      count++;
+      allocatab[lastNumberRegister].num_registrado = count;
+      allocatab[lastNumberRegister].tipo = asttab[i].valuetype;
+      allocatab[lastNumberRegister].nome_variavel = asttab[i].name;
+      lastNumberRegister++;
+    }
+    //printf("name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
+  }
+
+  return count;
+}
+
+int reg_var = 0;
+int num_register = 0; 
+char percent[] = "%";
+int converter(struct ast *a)
+{
+  int reg;
+  if (!a)
+  {
+    yyerror("Erro interno, EVAL recebendo arvore NULA");
+    return;
+  }
+
+  //printf("NodeType:%c\n", a->nodetype);
+  switch (a->nodetype)
+  {
+  /* constante */
+  case 'K':
+    //printf("store %d\n", num_register, ((struct numval *)a)->number);
+    printf("%s%d = alloca i32, align 4\n", percent, num_register);
+    printf("store i32 %.0lf , i32* %s%d, align\n", ((struct numval *)a)->number, percent, num_register);
+    reg = num_register;
+    break;
+  /* nome de variavel */
+  case 'N':
+    //v = ((struct symref *)a)->s->value;     v = ((struct symref *)a)->s->value;
+    printf("%s%d = load i32, i32*  %s%d, align 4\n", percent, num_register, percent, allocatab[searchAllocaTab(getNameVariable(a))].num_registrado);
+    reg = allocatab[searchAllocaTab(((struct symref *)a)->s->name)].num_registrado;
+    break;
+  /* declaração */
+  case '=':
+    //v = ((struct symasgn *)a)->s->value = eval(((struct symasgn *)a)->v);
+    reg = converter(((struct symasgn *)a)->v);
+    break;
+  /* expressões */
+  case '+':
+    printf("%d = add %d, %d\n", num_register, converter(a->l), converter(a->r));
+    printf("store i32 %s%d , i32* %s%d, align\n", percent, num_register, percent, ++reg_var);
+
+    //printf("store %d -> %d\n", num_register, ++reg_var);
+    reg = num_register;
+    //v = eval(a->l) + eval(a->r);
+    break;
+  case '-':
+    printf("%s%d = sub nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l), percent, converter(a->r));
+    printf("store i32 %s%d , i32* %s%d, align\n", percent, num_register, percent, ++reg_var);
+
+    //printf("store %d -> %d\n", num_register, ++reg_var);
+    reg = num_register;
+    //v = eval(a->l) - eval(a->r);
+    break;
+  case '*':
+    //v = eval(a->l) * eval(a->r);
+    break;
+  case '/':
+    //v = eval(a->l) / eval(a->r);
+    break;
+  case '^':
+
+    //v = pow(eval(a->l), eval(a->r));
+    break;
+  case 'M':
+    //v = -eval(a->l);
+    break;
+  default:
+    printf("Erro interno: no desconhecido %c\n", a->nodetype);
+    return 0;
+  }
+  num_register++;
+  return reg;
+}
 
 void treefree(struct ast *a)
 {
@@ -484,6 +577,7 @@ int main()
   }
 
   createFile();
+  num_register = countDECL() + 1;
   showAST();
 }
 
@@ -676,24 +770,6 @@ void header()
   printf("%s\n", header2);
 }
 //Quantidade de alocação = quantidade de declarações
-int countDECL()
-{
-  int count = 0;
-  for (int i = 0; i < NHASH; i++)
-  {
-    if (asttab[i].name != NULL)
-    {
-      allocatab[lastNumberRegister].num_registrado = count;
-      allocatab[lastNumberRegister].tipo = asttab[i].valuetype;
-      allocatab[lastNumberRegister].nome_variavel = asttab[i].name;
-      count++;
-      lastNumberRegister++;
-    }
-    //printf("name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
-  }
-
-  return count;
-}
 
 char *writeAlloc()
 {
@@ -705,6 +781,7 @@ void createAlloc()
 {
   //Realiza a contagem de alocações de acordo com a quantidade de declarações
   count = countDECL();
+  countRegisters = count;
   for (int i = 1; i <= count; i++)
   {
 
@@ -756,6 +833,7 @@ void writeSub(struct ast *a)
     sprintf(value, "%.2lf", eval(a->r));
     final_line = replaceWord(final_line, oldW2, value);
     printf(final_line);
+    //isertAllocaTab(allocatab[searchAllocaTab(getNameVariable(a->l))].tipo, allocatab[searchAllocaTab(getNameVariable(a->l))].valor_variavel, lastNumberRegister);
     writeStore(a, 2, 4);
   }
   else if (tipo1 == 1 && tipo2 == 2) //Variavel lado direito
@@ -769,8 +847,11 @@ void writeSub(struct ast *a)
     sprintf(value, "%.2lf", eval(a->l));
     final_line = replaceWord(final_line, oldW2, value);
     printf(final_line);
+    //isertAllocaTab(allocatab[searchAllocaTab(getNameVariable(a->r))].tipo, allocatab[searchAllocaTab(getNameVariable(a->r))].valor_variavel, lastNumberRegister);
     writeStore(a, 2, 3);
   }
+
+  showAllocaTab();
 
   //final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
 }
@@ -824,7 +905,8 @@ void writeLoad(struct ast *a, int side)
     final_line = replaceWord(final_line, oldW0, number_register);
     final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
     final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
-    isertAllocaTab(allocatab[searchAllocaTab(variable_name)].tipo, allocatab[searchAllocaTab(variable_name)].valor_variavel);
+    //insertAllocaTab(a, lastNumberRegister, (((struct symasgn *)a)->s->name != NULL ? ((struct symasgn *)a)->s->name : "K") );
+    //isertAllocaTab(allocatab[searchAllocaTab(variable_name)].tipo, allocatab[searchAllocaTab(variable_name)].valor_variavel, lastNumberRegister);
   }
   if (side == 2)
   {
@@ -833,13 +915,13 @@ void writeLoad(struct ast *a, int side)
     final_line = replaceWord(load, oldW, number_register);
     sprintf(number_register, "%d", ++lastNumberRegister);
     final_line = replaceWord(final_line, oldW0, number_register);
-
     final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
     final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
-    isertAllocaTab(allocatab[searchAllocaTab(variable_name)].tipo, allocatab[searchAllocaTab(variable_name)].valor_variavel);
+    //isertAllocaTab(allocatab[searchAllocaTab(variable_name)].tipo, allocatab[searchAllocaTab(variable_name)].valor_variavel, lastNumberRegister);
   }
 
   printf(final_line);
+  showAllocaTab();
 }
 
 double executarOperacao(struct ast *a, int operacao)
@@ -882,6 +964,7 @@ void writeStore(struct ast *a, int operacao, int situacao)
     sprintf(number_result, "%.2lf", result);
     final_line = replaceWord(final_line, oldW0, number_result);
     printf(final_line);
+    //isertAllocaTab(isInteger(result), result, availableRegister - 1);
   }
   else if (situacao == 3)
   { //variavel do lado direito
@@ -913,6 +996,14 @@ void writeStore(struct ast *a, int operacao, int situacao)
   final_line = replaceWord(final_line, oldType0, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
   final_line = replaceWord(final_line, oldType1, tipos[allocatab[searchAllocaTab(variable_name)].tipo]);
   printf(final_line);*/
+}
+
+void showAllocaTab()
+{
+  for (int i = 0; i < lastNumberRegister; i++)
+  {
+    printf("reg: %d nome:%s  tipo:%d valor:%.2lf\n", allocatab[i].num_registrado, allocatab[i].nome_variavel == NULL ? " " : allocatab[i].nome_variavel, allocatab[i].tipo, allocatab[i].valor_variavel);
+  }
 }
 
 void writeRet()
