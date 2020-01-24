@@ -195,6 +195,17 @@ void showAST()
   }
 }
 
+void writeIR(FILE* resultFile)
+{
+  for (int i = 0; i < position; i++)
+  {
+    if (strlen(asttab[i].name) > 0)
+    {
+      int reg = converter(asttab[i].a, resultFile);
+    }
+  }
+}
+
 /* symbol table */
 /* hash a symbol */
 static unsigned
@@ -584,27 +595,18 @@ char *replaceWord(const char *s, const char *oldW,
   int i, cnt = 0;
   int newWlen = strlen(newW);
   int oldWlen = strlen(oldW);
-
-  // Counting the number of times old word
-  // occur in the string
   for (i = 0; s[i] != '\0'; i++)
   {
     if (strstr(&s[i], oldW) == &s[i])
     {
       cnt++;
-
-      // Jumping to index after the old word.
       i += oldWlen - 1;
     }
   }
-
-  // Making new string of enough length
   result = (char *)malloc(i + cnt * (newWlen - oldWlen) + 1);
-
   i = 0;
   while (*s)
   {
-    // compare the substring with the result
     if (strstr(s, oldW) == s)
     {
       strcpy(&result[i], newW);
@@ -614,30 +616,28 @@ char *replaceWord(const char *s, const char *oldW,
     else
       result[i++] = *s++;
   }
-
   result[i] = '\0';
   return result;
 }
 
-void createFile()
+void writeHeader(FILE *resultFile)
 {
-  header();
-  createAlloc();
-  
-  //footer();
+  fputs("target triple = 'x86_64-pc-linux-gnu'\n", resultFile);
+  fputs("define i32 @main() #0 {\n", resultFile);
 }
 
-void header()
+void createFile(FILE *resultFile)
 {
-  char header[] = "target triple = 'x86_64-pc-linux-gnu'";
-  char header2[] = "define i32 @main() #0 {";
-  printf("%s\n", header);
-  printf("%s\n", header2);
+  writeHeader(resultFile);
+  writeAlloca(resultFile);
+  num_register = countDECL() + 1;
+  writeIR(resultFile);
+  footer(resultFile);
 }
 
-void footer(){
-  char footer[] = "ret i32 0 }";
-  printf("%s\n", footer);
+void footer(FILE* resultFile)
+{
+  fputs("ret i32 0\n }", resultFile);
 }
 
 int countDECL()
@@ -653,9 +653,7 @@ int countDECL()
       allocatab[lastNumberRegister].nome_variavel = asttab[i].name;
       lastNumberRegister++;
     }
-    //printf("name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
   }
-
   return count;
 }
 
@@ -669,25 +667,15 @@ int searchAllocaTab(char *name)
   return -1;
 }
 
-void createAlloc()
+void writeAlloca(FILE* resultFile)
 {
   //Realiza a contagem de alocações de acordo com a quantidade de declarações
   int count = countDECL();
   for (int i = 1; i <= count; i++)
-  {
-
-    char s1[] = "\%REGISTRADOR0 = alloca TIPO0, align 4\n";
-    char s2[] = "REGISTRADOR0";
-    char type0[] = "TIPO0";
-    char s3[10];
-    sprintf(s3, "%d", i);
-    char *final_line = replaceWord(s1, s2, s3);
-    final_line = replaceWord(final_line, type0, tipos[allocatab[i - 1].tipo]);
-    printf(final_line);
-  }
+    fprintf(resultFile, "%s%d = alloca %s, align 4\n", percent, i, tipos[allocatab[i - 1].tipo]);
 }
 
-int converter(struct ast *a)
+int converter(struct ast *a, FILE* resultFile)
 {
   int reg;
   if (!a)
@@ -696,52 +684,51 @@ int converter(struct ast *a)
     return;
   }
 
-  //printf("NodeType:%c\n", a->nodetype);
   switch (a->nodetype)
   {
   /* constante */
   case 'K':
-    printf("%s%d = alloca i32, align 4\n", percent, num_register);
-    printf("store i32 %.0lf, i32* %s%d, align 4\n", ((struct numval *)a)->number, percent, num_register);
-    printf("%s%d = load i32, i32*  %s%d, align 4\n", percent, ++num_register, percent, num_register);
+    fprintf(resultFile, "%s%d = alloca i32, align 4\n", percent, num_register);
+    fprintf(resultFile, "store i32 %.0lf, i32* %s%d, align 4\n", ((struct numval *)a)->number, percent, num_register);
+    fprintf(resultFile, "%s%d = load i32, i32*  %s%d, align 4\n", percent, ++num_register, percent, num_register);
     reg = num_register;
     break;
   /* nome de variavel */
   case 'N':
-    printf("%s%d = load i32, i32*  %s%d, align 4\n", percent, num_register, percent, allocatab[searchAllocaTab(getNameVariable(a))].num_registrado);
+    fprintf(resultFile, "%s%d = load i32, i32*  %s%d, align 4\n", percent, num_register, percent, allocatab[searchAllocaTab(getNameVariable(a))].num_registrado);
     reg = allocatab[searchAllocaTab(((struct symref *)a)->s->name)].num_registrado;
     break;
   /* declaração */
   case '=':
-    reg = converter(((struct symasgn *)a)->v);
+    reg = converter(((struct symasgn *)a)->v, resultFile);
     break;
   /* expressões */
   case '+':
-    printf("%d = add %d, %d\n", num_register, converter(a->l), converter(a->r));
-    printf("store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    fprintf(resultFile, "%d = add nsw i32 %d, %d\n", num_register, converter(a->l, resultFile), converter(a->r, resultFile));
+    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
     reg = num_register;
     break;
   case '-':
-    printf("%s%d = sub nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l), percent, converter(a->r));
-    printf("store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    fprintf(resultFile, "%s%d = sub nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
     reg = num_register;
     break;
   case '*':
     //v = eval(a->l) * eval(a->r);
-    printf("%s%d = mul nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l), percent, converter(a->r));
-    printf("store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    fprintf(resultFile, "%s%d = mul nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
     reg = num_register;
     break;
   case '/':
-    printf("%s%d = sdiv nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l), percent, converter(a->r));
-    printf("store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    fprintf(resultFile, "%s%d = sdiv nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
     reg = num_register;
     break;
   case '^':
-    printf("%s%d = call double @pow(double %s%d, double %s%d)\n", percent, num_register, percent, converter(a->l), percent, converter(a->r));
+    fprintf(resultFile, "%s%d = call double @pow(double %s%d, double %s%d)\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
     if (isInteger(pow(eval(a->l), eval(a->r))))
-      printf("%s%d = fptosi double %s%d to i32\n", percent, ++num_register, percent, num_register - 1);
-    printf("store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+      fprintf(resultFile, "%s%d = fptosi double %s%d to i32\n", percent, ++num_register, percent, num_register - 1);
+    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
     reg = num_register;
     break;
   case 'M':
@@ -754,16 +741,16 @@ int converter(struct ast *a)
   num_register++;
   return reg;
 }
-int main()
+
+void writeFile()
+{
+}
+
+int main(int argc, char **argv)
 {
 
-  FILE *file;
-  char name_file[100];
-
-  printf("#####################################################################\n");
-  printf("Digite o nome do arquivo:");
-  scanf("%s", name_file);
-  file = fopen(name_file, "r");
+  FILE *file = fopen(argv[1], "r");
+  FILE *resultFile = fopen("./resultado.ll", "w+");
   if (file == NULL)
   {
     printf("Não foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
@@ -773,17 +760,5 @@ int main()
 
   yyparse();
 
-  for (int i = 0; i < NHASH; i++)
-  {
-    if (symtab[i].name != NULL)
-      ;
-    //printf("symtab name: %s valuetype: %d\n", symtab[i].name, symtab[i].valuetype);
-    if (asttab[i].name != NULL)
-      ;
-    //printf("astab name: %s valuetype: %d nodetype:%d\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype);
-  }
-
-  createFile();
-  num_register = countDECL() + 1;
-  showAST();
+  createFile(resultFile);
 }
