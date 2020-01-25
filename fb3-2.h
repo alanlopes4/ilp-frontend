@@ -59,6 +59,7 @@ struct ast *newast(int nodetype, struct ast *l, struct ast *r);
 struct ast *newref(struct symbol *s);
 struct ast *newasgn(struct symbol *s, struct ast *v);
 struct ast *newnum(double d);
+void newprint(struct ast *a);
 
 
 double eval(struct ast *);

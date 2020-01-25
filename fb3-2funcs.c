@@ -14,6 +14,7 @@ int hasErro = 0;
 int listTypes[NHASH];
 int positionListTypes = 0;
 int positionAlloca = 0;
+int typeOfLastVariable = -1;
 
 int line = 0;
 int column = 0;
@@ -25,6 +26,7 @@ int reg_var = 0;
 int num_register = 0;
 char percent[] = "%";
 int declarations[NHASH];
+int countDeclarations = 0;
 
 int isInteger(double num)
 {
@@ -46,10 +48,51 @@ void insertASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
 {
   a->v = v;
   asttab[position].name = s->name;
+  asttab[position].value = s->value;
   asttab[position].a = malloc(sizeof(struct symasgn));
   asttab[position].a = (struct ast *)a;
   asttab[position].valuetype = isInteger(eval(a->v));
   position++;
+}
+
+void insertPrintASTTab(struct ast *arv)
+{
+
+  struct symasgn *a = malloc(sizeof(struct symasgn));
+  struct symbol *s = malloc(sizeof(struct symbol));
+
+  if (!a)
+  {
+    yyerror("Fora do espaço");
+    exit(0);
+  }
+
+  //Caracterizando um print
+  a->nodetype = 'p';
+  s->name = "print";
+  s->valuetype = 2;
+  a->s = s;
+
+  //Alocando o print
+  a->v = arv;
+  a->s->value = eval(a->v);
+  asttab[position].name = s->name;
+  asttab[position].a = malloc(sizeof(struct ast));
+  asttab[position].a = (struct ast *)a;
+  asttab[position].valuetype = isInteger(eval(a->v));
+  position++;
+
+  /*a->nodetype = 'p';
+  s->name = "print";
+  s->valuetype = 2;
+  a->s = s;
+
+  asttab[position].name = "print";
+  asttab[position].a = malloc(sizeof(struct ast));
+  asttab[position].a = (struct ast *)arv;
+  asttab[position].a->nodetype = 'p';
+  asttab[position].valuetype = isInteger(eval(a->v));
+  position++;*/
 }
 
 void insertAllocaTab(int tipo, double valor, int numRegistrador)
@@ -141,6 +184,7 @@ void updateASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
         {           //Caso não tenha erro
           a->v = v; //atribuindo o valor
           asttab[p].name = s->name;
+          asttab[p].value = s->value;
           asttab[p].a = malloc(sizeof(struct symasgn));
           asttab[p].a = (struct ast *)a;
         }
@@ -191,7 +235,7 @@ void showAST()
   {
     if (strlen(asttab[i].name) > 0)
     {
-      // int reg = converter(asttab[i].a, resultFile);
+      printf("%s %d %c %lf\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype, asttab[i].value);
     }
   }
 }
@@ -256,6 +300,17 @@ newast(int nodetype, struct ast *l, struct ast *r)
   return a;
 }
 
+void newprint(struct ast *arv)
+{
+
+  if (!arv)
+  {
+    yyerror("erro on print");
+    exit(0);
+  }
+  insertPrintASTTab(arv);
+}
+
 struct ast *
 newnum(double d)
 {
@@ -306,6 +361,8 @@ newasgn(struct symbol *s, struct ast *v)
   }
   a->nodetype = '=';
   a->s = s;
+  a->s->value = eval(a->v);
+  printf("a->s->value:%lf\n", eval(a->v));
 
   updateASTTab(a, v, s);
 
@@ -341,6 +398,7 @@ double
 eval(struct ast *a)
 {
   double v;
+
   if (!a)
   {
     yyerror("Erro interno, EVAL recebendo arvore NULA");
@@ -356,6 +414,8 @@ eval(struct ast *a)
   /* nome de variavel */
   case 'N':
     v = ((struct symref *)a)->s->value;
+    printf("N:%lf\n", v);
+
     break;
   /* declaração */
   case '=':
@@ -410,10 +470,12 @@ eval(struct ast *a)
   case 'M':
     v = -eval(a->l);
     break;
-
+  case 'p':
+    break;
   default:
     printf("Erro interno: no desconhecido %c\n", a->nodetype);
   }
+
   return v;
 }
 
@@ -698,7 +760,7 @@ void writeOp(FILE *resultFile, char op[], char type[], struct ast *a)
 
 int declarationsContains(int num)
 {
-  for (int i = 0; i < NHASH; i++)
+  for (int i = 0; i < countDeclarations; i++)
   {
     if (declarations[i] == num)
       return 1;
@@ -706,19 +768,37 @@ int declarationsContains(int num)
   return 0;
 }
 
+void writePrint(FILE *resultFile, char type[])
+{
+  if (declarationsContains(4) == 0)
+    declarations[countDeclarations++] = 4;
+  if (typeOfLastVariable == 1)
+  {
+    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i32 %s%d)\n", percent, num_register, percent, num_register - 1);
+    if (declarationsContains(2) == 0)
+      declarations[countDeclarations++] = 2;
+  }
+  else
+  {
+    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), double %s%d)\n", percent, num_register, percent, num_register - 1);
+    if (declarationsContains(3) == 0)
+      declarations[countDeclarations++] = 3;
+  }
+}
+
 int converter(struct ast *a, FILE *resultFile)
 {
   int reg;
   if (!a)
   {
-    yyerror("Erro interno, EVAL recebendo arvore NULA");
+    yyerror("Erro interno, CONVERTER recebendo arvore NULA");
     return -1;
   }
   char type[6];
   switch (a->nodetype)
   {
   /* constante */
-  case 'K':;
+  case 'K':
 
     strcpy(type, tipos[isInteger(((struct numval *)a)->number)]);
     fprintf(resultFile, "\n%s%d = alloca %s, align 4\n", percent, num_register, type);
@@ -732,16 +812,25 @@ int converter(struct ast *a, FILE *resultFile)
     break;
   /* nome de variavel */
   case 'N':
-    strcpy(type, tipos[allocatab[searchAllocaTab(getNameVariable(a))].tipo]);
+    typeOfLastVariable = allocatab[searchAllocaTab(getNameVariable(a))].tipo;
+    strcpy(type, tipos[typeOfLastVariable]);
     int num_registrador = allocatab[searchAllocaTab(getNameVariable(a))].num_registrado;
     fprintf(resultFile, "\n%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_registrador);
     //reg = allocatab[searchAllocaTab(((struct symref *)a)->s->name)].num_registrado;
     reg = num_register;
     break;
+  case 'p':
+    converter(((struct symasgn *)a)->v, resultFile);
+    printf("value%d\n", eval(((struct symasgn *)a)->v));
+    //strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
+    printf("type:%s\n", type);
+    writePrint(resultFile, type);
+    reg = num_register;
+    break;
   /* declaração */
   case '=':
     reg = converter(((struct symasgn *)a)->v, resultFile);
-    strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v->l))]);
+    strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
     if (strcmp(type, "double") == 0)
       num_register--;
     fprintf(resultFile, "store %s %s%d , %s* %s%d, align 4\n", type, percent, num_register, type, percent, ++reg_var);
@@ -820,6 +909,13 @@ void writeDeclares(FILE *resultFile)
   {
     if (declarations[i] == 1)
       fprintf(resultFile, "declare double @pow(double, double)\n");
+    if (declarations[i] == 4)
+      fprintf(resultFile, "declare i32 @printf(i8*, ...) #1\n");
+    if (declarations[i] == 2)
+      fprintf(resultFile, "@.str = private unnamed_addr constant [3 x i8] c\"%s%s\\00\", align 1\n", "%", "d");
+
+    if (declarations[i] == 3)
+      fprintf(resultFile, "@.str.1 = private unnamed_addr constant [3 x i8] c\"%s%s\\00\", align 1\n", "%", "f");
   }
 }
 
@@ -836,7 +932,8 @@ void createFile(FILE *resultFile)
 int main(int argc, char **argv)
 {
 
-  FILE *file = fopen(argv[1], "r");
+  //FILE *file = fopen(argv[1], "r");
+  FILE *file = fopen("programa.txt", "r");
   FILE *resultFile = fopen("./resultado.ll", "w+");
   if (file == NULL)
   {
@@ -846,6 +943,6 @@ int main(int argc, char **argv)
   yyin = file;
 
   yyparse();
-
+  showAST();
   createFile(resultFile);
 }

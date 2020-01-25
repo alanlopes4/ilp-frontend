@@ -4,11 +4,8 @@
 
 int main()
 {
-    double a = 1.2;
-    double b = 1.2;
-    double c = a + b;
-
-    int d = 1;
-    int e = 2;
-    int f = d + e;
+    int a = 2;
+    printf("%d\n", a);
+    double b = 2.3;
+    printf("%f\n", b);
 }

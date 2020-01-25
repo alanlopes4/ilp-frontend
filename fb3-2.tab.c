@@ -1341,80 +1341,86 @@ yyreduce:
 #line 1342 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
+  case 7:
+#line 49 "fb3-2.y" /* yacc.c:1646  */
+    { newprint((yyvsp[-1].a)); }
+#line 1348 "fb3-2.tab.c" /* yacc.c:1646  */
+    break;
+
   case 8:
 #line 52 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = (yyvsp[0].a); }
-#line 1348 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1354 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
 #line 53 "fb3-2.y" /* yacc.c:1646  */
     {  (yyval.a) = newast('+', (yyvsp[-2].a),(yyvsp[0].a));}
-#line 1354 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1360 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
 #line 54 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('-', (yyvsp[-2].a),(yyvsp[0].a));}
-#line 1360 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1366 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
 #line 56 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = (yyvsp[0].a); }
-#line 1366 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1372 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
 #line 57 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('*', (yyvsp[-2].a),(yyvsp[0].a)); }
-#line 1372 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1378 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
 #line 58 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('/', (yyvsp[-2].a),(yyvsp[0].a)); }
-#line 1378 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1384 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
 #line 60 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = (yyvsp[0].a); }
-#line 1384 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1390 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
 #line 61 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('^', (yyvsp[-2].a), (yyvsp[0].a)); }
-#line 1390 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1396 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
 #line 62 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = (yyvsp[-1].a); }
-#line 1396 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1402 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
 #line 63 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newast('M', (yyvsp[0].a), NULL); }
-#line 1402 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1408 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
 #line 66 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newnum((yyvsp[0].d)); }
-#line 1408 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1414 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
 #line 67 "fb3-2.y" /* yacc.c:1646  */
     { (yyval.a) = newref((yyvsp[0].s)); }
-#line 1414 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1420 "fb3-2.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1418 "fb3-2.tab.c" /* yacc.c:1646  */
+#line 1424 "fb3-2.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires

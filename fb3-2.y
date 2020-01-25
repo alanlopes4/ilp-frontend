@@ -46,7 +46,7 @@ attr:
     NAME '=' exp ENDL   { $$ = newasgn($1, $3); }
 ;
 print:
-    PRINTAR exp ENDL 
+    PRINTAR exp ENDL    { newprint($2); }
 ;
 
 exp: exp1                 { $$ = $1; }
