@@ -24,6 +24,7 @@ int countRegisters = 0;
 int reg_var = 0;
 int num_register = 0;
 char percent[] = "%";
+int declarations[NHASH];
 
 int isInteger(double num)
 {
@@ -190,18 +191,7 @@ void showAST()
   {
     if (strlen(asttab[i].name) > 0)
     {
-      int reg = converter(asttab[i].a);
-    }
-  }
-}
-
-void writeIR(FILE* resultFile)
-{
-  for (int i = 0; i < position; i++)
-  {
-    if (strlen(asttab[i].name) > 0)
-    {
-      int reg = converter(asttab[i].a, resultFile);
+      // int reg = converter(asttab[i].a, resultFile);
     }
   }
 }
@@ -622,20 +612,11 @@ char *replaceWord(const char *s, const char *oldW,
 
 void writeHeader(FILE *resultFile)
 {
-  fputs("target triple = 'x86_64-pc-linux-gnu'\n", resultFile);
+  fputs("target triple = \"x86_64-pc-linux-gnu\"\n", resultFile);
   fputs("define i32 @main() #0 {\n", resultFile);
 }
 
-void createFile(FILE *resultFile)
-{
-  writeHeader(resultFile);
-  writeAlloca(resultFile);
-  num_register = countDECL() + 1;
-  writeIR(resultFile);
-  footer(resultFile);
-}
-
-void footer(FILE* resultFile)
+void footer(FILE *resultFile)
 {
   fputs("ret i32 0\n }", resultFile);
 }
@@ -667,7 +648,7 @@ int searchAllocaTab(char *name)
   return -1;
 }
 
-void writeAlloca(FILE* resultFile)
+void writeAlloca(FILE *resultFile)
 {
   //Realiza a contagem de alocações de acordo com a quantidade de declarações
   int count = countDECL();
@@ -675,60 +656,140 @@ void writeAlloca(FILE* resultFile)
     fprintf(resultFile, "%s%d = alloca %s, align 4\n", percent, i, tipos[allocatab[i - 1].tipo]);
 }
 
-int converter(struct ast *a, FILE* resultFile)
+char *writeOpFloatingPoint(char op[])
+{
+
+  char *newOp = malloc(4);
+  if (strcmp(op, "add") == 0)
+  {
+    strcpy(newOp, "fadd");
+  }
+  else if (strcmp(op, "sub") == 0)
+  {
+    strcpy(newOp, "fsub");
+  }
+  else if (strcmp(op, "mul") == 0)
+  {
+    strcpy(newOp, "fmul");
+  }
+  else if (strcmp(op, "sdiv") == 0)
+  {
+    strcpy(newOp, "fdiv");
+  }
+  return newOp;
+}
+
+void writeOp(FILE *resultFile, char op[], char type[], struct ast *a)
+{
+
+  if (strcmp(type, "i32") == 0)
+  {
+    if (strcmp(op, "sdiv") == 0)
+      fprintf(resultFile, "\n%s%d = %s %s %s%d, %s%d\n", percent, num_register, op, type, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+    else
+      fprintf(resultFile, "\n%s%d = %s nsw %s %s%d, %s%d\n", percent, num_register, op, type, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+  }
+  else
+  {
+    char *newOp = writeOpFloatingPoint(op);
+    fprintf(resultFile, "\n%s%d = %s  %s %s%d, %s%d\n", percent, num_register, newOp, type, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+  }
+}
+
+int declarationsContains(int num)
+{
+  for (int i = 0; i < NHASH; i++)
+  {
+    if (declarations[i] == num)
+      return 1;
+  }
+  return 0;
+}
+
+int converter(struct ast *a, FILE *resultFile)
 {
   int reg;
   if (!a)
   {
     yyerror("Erro interno, EVAL recebendo arvore NULA");
-    return;
+    return -1;
   }
-
+  char type[6];
   switch (a->nodetype)
   {
   /* constante */
-  case 'K':
-    fprintf(resultFile, "%s%d = alloca i32, align 4\n", percent, num_register);
-    fprintf(resultFile, "store i32 %.0lf, i32* %s%d, align 4\n", ((struct numval *)a)->number, percent, num_register);
-    fprintf(resultFile, "%s%d = load i32, i32*  %s%d, align 4\n", percent, ++num_register, percent, num_register);
+  case 'K':;
+
+    strcpy(type, tipos[isInteger(((struct numval *)a)->number)]);
+    fprintf(resultFile, "\n%s%d = alloca %s, align 4\n", percent, num_register, type);
+    if (strcmp(type, "i32") == 0)
+      fprintf(resultFile, "store %s %.0lf, %s* %s%d, align 4\n", type, ((struct numval *)a)->number, type, percent, num_register);
+    else
+      fprintf(resultFile, "store %s %lf, %s* %s%d, align 4\n", type, ((struct numval *)a)->number, type, percent, num_register);
+    num_register++;
+    fprintf(resultFile, "%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_register - 1);
     reg = num_register;
     break;
   /* nome de variavel */
   case 'N':
-    fprintf(resultFile, "%s%d = load i32, i32*  %s%d, align 4\n", percent, num_register, percent, allocatab[searchAllocaTab(getNameVariable(a))].num_registrado);
-    reg = allocatab[searchAllocaTab(((struct symref *)a)->s->name)].num_registrado;
+    strcpy(type, tipos[allocatab[searchAllocaTab(getNameVariable(a))].tipo]);
+    int num_registrador = allocatab[searchAllocaTab(getNameVariable(a))].num_registrado;
+    fprintf(resultFile, "\n%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_registrador);
+    //reg = allocatab[searchAllocaTab(((struct symref *)a)->s->name)].num_registrado;
+    reg = num_register;
     break;
   /* declaração */
   case '=':
     reg = converter(((struct symasgn *)a)->v, resultFile);
+    strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v->l))]);
+    if (strcmp(type, "double") == 0)
+      num_register--;
+    fprintf(resultFile, "store %s %s%d , %s* %s%d, align 4\n", type, percent, num_register, type, percent, ++reg_var);
     break;
   /* expressões */
   case '+':
-    fprintf(resultFile, "%d = add nsw i32 %d, %d\n", num_register, converter(a->l, resultFile), converter(a->r, resultFile));
-    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    strcpy(type, tipos[isInteger(eval(a->l))]);
+    writeOp(resultFile, "add", type, a);
     reg = num_register;
     break;
   case '-':
-    fprintf(resultFile, "%s%d = sub nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
-    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    strcpy(type, tipos[isInteger(eval(a->l))]);
+    writeOp(resultFile, "sub", type, a);
+    num_register--;
     reg = num_register;
     break;
   case '*':
-    //v = eval(a->l) * eval(a->r);
-    fprintf(resultFile, "%s%d = mul nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
-    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    strcpy(type, tipos[isInteger(eval(a->l))]);
+    writeOp(resultFile, "mul", type, a);
     reg = num_register;
     break;
   case '/':
-    fprintf(resultFile, "%s%d = sdiv nsw i32 %s%d, %s%d\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
-    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+    strcpy(type, tipos[isInteger(eval(a->l))]);
+    writeOp(resultFile, "sdiv", type, a);
     reg = num_register;
     break;
   case '^':
-    fprintf(resultFile, "%s%d = call double @pow(double %s%d, double %s%d)\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+    strcpy(type, tipos[isInteger(eval(a->l))]);
+
+    int regLeft = converter(a->l, resultFile);
+    int regRight = converter(a->r, resultFile);
+
+    if (strcmp(type, "i32") == 0)
+    {
+      fprintf(resultFile, "%s%d = sitofp i32 %s%d to double\n", percent, num_register, percent, regRight);
+      num_register++;
+      fprintf(resultFile, "%s%d = sitofp i32 %s%d to double\n", percent, num_register, percent, regLeft);
+      num_register++;
+      fprintf(resultFile, "%s%d = call double @pow(double %s%d, double %s%d)\n", percent, num_register, percent, num_register - 1, percent, num_register);
+    }
+    else
+      fprintf(resultFile, "%s%d = call double @pow(double %s%d, double %s%d)\n", percent, num_register, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+
     if (isInteger(pow(eval(a->l), eval(a->r))))
-      fprintf(resultFile, "%s%d = fptosi double %s%d to i32\n", percent, ++num_register, percent, num_register - 1);
-    fprintf(resultFile, "store i32 %s%d , i32* %s%d, align 4\n", percent, num_register, percent, ++reg_var);
+      fprintf(resultFile, "%s%d = fptosi double %s%d to i32\n", percent, num_register + 1, percent, num_register);
+
+    if (declarationsContains(1) == 0)
+      declarations[num_register] = 1;
     reg = num_register;
     break;
   case 'M':
@@ -742,8 +803,34 @@ int converter(struct ast *a, FILE* resultFile)
   return reg;
 }
 
-void writeFile()
+void writeIR(FILE *resultFile)
 {
+  for (int i = 0; i < position; i++)
+  {
+    if (strlen(asttab[i].name) > 0)
+    {
+      converter(asttab[i].a, resultFile);
+    }
+  }
+}
+
+void writeDeclares(FILE *resultFile)
+{
+  for (int i = 0; i < NHASH; i++)
+  {
+    if (declarations[i] == 1)
+      fprintf(resultFile, "declare double @pow(double, double)\n");
+  }
+}
+
+void createFile(FILE *resultFile)
+{
+  writeHeader(resultFile);
+  writeAlloca(resultFile);
+  num_register = countDECL() + 1;
+  writeIR(resultFile);
+  footer(resultFile);
+  writeDeclares(resultFile);
 }
 
 int main(int argc, char **argv)

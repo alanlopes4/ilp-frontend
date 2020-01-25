@@ -30,7 +30,7 @@
 %left '*' '/'
 %nonassoc UMINUS
 
-%type <a> exp attr 
+%type <a> exp attr exp1 exp2 exp3
 
 %start list
 
@@ -49,16 +49,22 @@ print:
     PRINTAR exp ENDL 
 ;
 
-exp: exp '+' exp          {  $$ = newast('+', $1,$3);}
-   | exp '-' exp          { $$ = newast('-', $1,$3);}
-   | exp '*' exp          { $$ = newast('*', $1,$3); }
-   | exp '/' exp          { $$ = newast('/', $1,$3); }
-   | exp '^' exp          { $$ = newast('^', $1, $3); }  
+exp: exp1                 { $$ = $1; }
+   | exp '+' exp1          {  $$ = newast('+', $1,$3);}
+   | exp '-' exp1         { $$ = newast('-', $1,$3);}
+;
+exp1: exp2                 { $$ = $1; }
+   | exp1 '*' exp2          { $$ = newast('*', $1,$3); }
+   | exp1 '/' exp2          { $$ = newast('/', $1,$3); }
+;
+exp2: exp3                 { $$ = $1; }
+   | exp2 '^' exp3          { $$ = newast('^', $1, $3); }  
    | '(' exp ')'          { $$ = $2; }  
-   | '-' exp %prec UMINUS { $$ = newast('M', $2, NULL); } 
-   | NUMBER               { $$ = newnum($1); }
+   | '-' exp3 %prec UMINUS { $$ = newast('M', $2, NULL); } 
+;
+exp3:
+    NUMBER               { $$ = newnum($1); }
    | NAME                 { $$ = newref($1); }
-
 ;
 
 

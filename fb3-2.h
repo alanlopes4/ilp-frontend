@@ -17,6 +17,7 @@ struct symbol {		/* a variable name */
 struct reftab{
     char *name;
     int valuetype;
+    double value;
     struct ast *a;
 };
 

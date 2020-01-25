@@ -2,11 +2,13 @@
 
 #include <stdio.h>
 
-int main(){
+int main()
+{
+    double a = 1.2;
+    double b = 1.2;
+    double c = a + b;
 
-    int a = 1 + 2;
-    int b = a * 4;
-
-    printf("%d\n",a);
-    printf("%d\n",b);
+    int d = 1;
+    int e = 2;
+    int f = d + e;
 }
