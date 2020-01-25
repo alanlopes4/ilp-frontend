@@ -15,6 +15,7 @@ int listTypes[NHASH];
 int positionListTypes = 0;
 int positionAlloca = 0;
 int typeOfLastVariable = -1;
+int isLoadLastOperation = 0;
 
 int line = 0;
 int column = 0;
@@ -362,7 +363,6 @@ newasgn(struct symbol *s, struct ast *v)
   a->nodetype = '=';
   a->s = s;
   a->s->value = eval(a->v);
-  printf("a->s->value:%lf\n", eval(a->v));
 
   updateASTTab(a, v, s);
 
@@ -401,7 +401,7 @@ eval(struct ast *a)
 
   if (!a)
   {
-    yyerror("Erro interno, EVAL recebendo arvore NULA");
+    //yyerror("Erro interno, EVAL recebendo arvore NULA");
     return 0.0;
   }
 
@@ -414,8 +414,6 @@ eval(struct ast *a)
   /* nome de variavel */
   case 'N':
     v = ((struct symref *)a)->s->value;
-    printf("N:%lf\n", v);
-
     break;
   /* declaração */
   case '=':
@@ -744,10 +742,12 @@ char *writeOpFloatingPoint(char op[])
 void writeOp(FILE *resultFile, char op[], char type[], struct ast *a)
 {
 
+  printf("lastOperation:%d\n", isLoadLastOperation);
+  type = (isLoadLastOperation == 1) ? tipos[typeOfLastVariable] : type;
   if (strcmp(type, "i32") == 0)
   {
     if (strcmp(op, "sdiv") == 0)
-      fprintf(resultFile, "\n%s%d = %s %s %s%d, %s%d\n", percent, num_register, op, type, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
+      fprintf(resultFile, "\n%s%d = %s %s %s%d, %s%d\n", percent, num_register, op, (type), percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
     else
       fprintf(resultFile, "\n%s%d = %s nsw %s %s%d, %s%d\n", percent, num_register, op, type, percent, converter(a->l, resultFile), percent, converter(a->r, resultFile));
   }
@@ -799,7 +799,8 @@ int converter(struct ast *a, FILE *resultFile)
   {
   /* constante */
   case 'K':
-
+    isLoadLastOperation = 0;
+    printf("K");
     strcpy(type, tipos[isInteger(((struct numval *)a)->number)]);
     fprintf(resultFile, "\n%s%d = alloca %s, align 4\n", percent, num_register, type);
     if (strcmp(type, "i32") == 0)
@@ -812,7 +813,9 @@ int converter(struct ast *a, FILE *resultFile)
     break;
   /* nome de variavel */
   case 'N':
+    printf("LOAD\n");
     typeOfLastVariable = allocatab[searchAllocaTab(getNameVariable(a))].tipo;
+    isLoadLastOperation = 1;
     strcpy(type, tipos[typeOfLastVariable]);
     int num_registrador = allocatab[searchAllocaTab(getNameVariable(a))].num_registrado;
     fprintf(resultFile, "\n%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_registrador);
@@ -820,15 +823,18 @@ int converter(struct ast *a, FILE *resultFile)
     reg = num_register;
     break;
   case 'p':
+    printf("P");
+
+    isLoadLastOperation = 1;
     converter(((struct symasgn *)a)->v, resultFile);
-    printf("value%d\n", eval(((struct symasgn *)a)->v));
     //strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
-    printf("type:%s\n", type);
     writePrint(resultFile, type);
     reg = num_register;
     break;
   /* declaração */
   case '=':
+    printf("=");
+    isLoadLastOperation = 0;
     reg = converter(((struct symasgn *)a)->v, resultFile);
     strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
     if (strcmp(type, "double") == 0)
@@ -943,6 +949,7 @@ int main(int argc, char **argv)
   yyin = file;
 
   yyparse();
-  showAST();
   createFile(resultFile);
+  fclose(resultFile);
+  system("clang resultado.ll -lm");
 }
