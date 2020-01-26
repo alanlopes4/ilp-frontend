@@ -4,6 +4,10 @@
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
+
+#include <ctype.h>
+#include <unistd.h>
+
 #include "fb3-2.h"
 
 FILE *yyin;
@@ -228,6 +232,17 @@ void showAST()
     if (strlen(asttab[i].name) > 0)
     {
       printf("%s %d %c %lf\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype, asttab[i].value);
+    }
+  }
+}
+
+void writeAST(FILE *treeFile)
+{
+  for (int i = 0; i < position; i++)
+  {
+    if (strlen(asttab[i].name) > 0)
+    {
+      dumpast(asttab[i].a, 0, treeFile);
     }
   }
 }
@@ -547,7 +562,7 @@ struct alocacao
 
 /* debugging: dump out an AST */
 int debug = 0;
-void dumpast(struct ast *a, int level)
+void dumpast(struct ast *a, int level, FILE *treeFile)
 {
 
   printf("%*s", 2 * level, ""); /* indent to this level */
@@ -563,85 +578,65 @@ void dumpast(struct ast *a, int level)
   {
     /* constante */
   case 'K':
-    printf("%4.4g\n", ((struct numval *)a)->number);
+    fprintf(treeFile, "%4.4g\n", ((struct numval *)a)->number);
     break;
 
     /* nome de variável */
   case 'N':
-    printf("ref %s\n", ((struct symref *)a)->s->name);
-    dumpast(searchAST(((struct symref *)a)->s->name), level);
+    fprintf(treeFile, "ref %s\n", ((struct symref *)a)->s->name);
+    dumpast(searchAST(((struct symref *)a)->s->name), level, treeFile);
     break;
 
     /* declaração */
   case '=':
-    printf("= %s\n", ((struct symref *)a)->s->name);
-    dumpast(((struct symasgn *)a)->v, level);
+    fprintf(treeFile, "= %s\n", ((struct symref *)a)->s->name);
+    dumpast(((struct symasgn *)a)->v, level, treeFile);
     return;
 
     /* expressões */
   case '+':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case '-':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case '*':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case '/':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case '^':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case 'L':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case '1':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
-    return;
   case '2':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
-    return;
   case '3':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
-    return;
   case '4':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
-    return;
   case '5':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
-    return;
   case '6':
-    printf("op %c\n", a->nodetype);
-    dumpast(a->l, level);
-    dumpast(a->r, level);
+    fprintf(treeFile, "op %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
+    dumpast(a->r, level, treeFile);
     return;
   case 'M':
-    printf("unop %c\n", a->nodetype);
-    dumpast(a->l, level);
+    fprintf(treeFile, "unop %c\n", a->nodetype);
+    dumpast(a->l, level, treeFile);
     return;
 
   default:
@@ -959,9 +954,68 @@ void createFile(FILE *resultFile)
 int main(int argc, char **argv)
 {
 
+  int opt;
+
+  int flag_a = 0, flag_o = 0, flag_h = 0;
+
   //FILE *file = fopen(argv[1], "r");
   FILE *file = fopen("programa.txt", "r");
-  FILE *resultFile = fopen("./resultado.ll", "w+");
+  FILE *resultFile;
+  FILE *treeFile;
+
+  while ((opt = getopt(argc, argv, "a:o:h")) != -1)
+  {
+    switch (opt)
+    {
+    case 'a':
+      flag_a = 1;
+      break;
+    case 'o':
+      flag_o = 1;
+      break;
+    case 'h':
+      flag_h = 1;
+      break;
+    default:
+      printf("Parâmetro desconhecido!\n");
+      exit(0);
+    }
+  }
+
+  if (flag_o == 0)
+  {
+    printf("É necessário passar -o \n");
+    exit(0);
+  }
+
+  if (flag_a == 1 && flag_o == 1)
+  {
+    treeFile = fopen(argv[2], "w+");
+
+    if (treeFile == NULL)
+    {
+      printf("Não foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
+      return 1;
+    }
+    showAST();
+    writeAST(treeFile);
+    fclose(treeFile);
+
+    resultFile = fopen(argv[4], "w+");
+  }
+  else if (flag_o == 1)
+  {
+    printf("NOME:%s\n", argv[2]);
+    resultFile = fopen(argv[2], "w+");
+  }
+
+  if (flag_h == 1)
+  {
+    printf("-a <YYY> imprime a árvore sintática abstrata (opcional)\n");
+    printf("-o <XXX> nome do arquivo de saída\n");
+    printf("-h ajuda");
+  }
+
   if (file == NULL)
   {
     printf("Não foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
@@ -971,7 +1025,7 @@ int main(int argc, char **argv)
 
   yyparse();
   //showAST();
-  if (hasErrorOnAST  != 1)
+  if (hasErrorOnAST != 1)
   {
     createFile(resultFile);
     fclose(resultFile);

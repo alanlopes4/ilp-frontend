@@ -69,7 +69,7 @@ void yyerror(char *s, ...);
 extern int debug;
 extern int position;
 extern void showAST();
-void dumpast(struct ast *a, int level);
+void dumpast(struct ast *a, int level, FILE *treeFile);
 void updateInfoErro(int linha, int coluna);
 int yyparse();
 int yylex();
