@@ -240,8 +240,9 @@ void writeAST(FILE *treeFile)
 {
   for (int i = 0; i < position; i++)
   {
-    if (strlen(asttab[i].name) > 0)
+    if (strlen(asttab[i].name) > 0 && strcmp(asttab[i].name, "print") != 0)
     {
+      printf("%s %d %c %lf\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype, asttab[i].value);
       dumpast(asttab[i].a, 0, treeFile);
     }
   }
@@ -997,7 +998,7 @@ int main(int argc, char **argv)
       printf("Não foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
       return 1;
     }
-    showAST();
+    //showAST();
     writeAST(treeFile);
     fclose(treeFile);
 
