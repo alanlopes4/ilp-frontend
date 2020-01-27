@@ -33,6 +33,13 @@ int num_register = 0;
 char percent[] = "%";
 int declarations[NHASH];
 int countDeclarations = 0;
+enum declare
+{
+  POW = 1,
+  PRINT_INT = 2,
+  PRINT_DOUBLE = 3,
+  PRINT = 4
+};
 
 int isInteger(double num)
 {
@@ -92,7 +99,6 @@ void insertPrintASTTab(struct ast *arv)
 
 void insertAllocaTab(int tipo, double valor, int numRegistrador)
 {
-  //printf("insert reg: %d, tipo: %d, valor: %lf\n", numRegistrador, tipo, valor);
   allocatab[numRegistrador - 1].num_registrado = numRegistrador;
   allocatab[numRegistrador - 1].tipo = tipo;
   allocatab[numRegistrador - 1].valor_variavel = valor;
@@ -242,7 +248,7 @@ void writeAST(FILE *treeFile)
   {
     if (strlen(asttab[i].name) > 0 && strcmp(asttab[i].name, "print") != 0)
     {
-      printf("%s %d %c %lf\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype, asttab[i].value);
+      //printf("%s %d %c %lf\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype, asttab[i].value);
       dumpast(asttab[i].a, 0, treeFile);
     }
   }
@@ -555,18 +561,11 @@ void yyerror(char *s, ...)
   fprintf(stderr, "\n");
 }
 
-struct alocacao
-{
-  int num_registrador;
-  char tipo[];
-};
-
-/* debugging: dump out an AST */
 int debug = 0;
 void dumpast(struct ast *a, int level, FILE *treeFile)
 {
 
-  printf("%*s", 2 * level, ""); /* indent to this level */
+  fprintf(treeFile, "%*s", 2 * level, ""); 
   level++;
 
   if (!a)
@@ -577,24 +576,17 @@ void dumpast(struct ast *a, int level, FILE *treeFile)
 
   switch (a->nodetype)
   {
-    /* constante */
   case 'K':
     fprintf(treeFile, "%4.4g\n", ((struct numval *)a)->number);
     break;
-
-    /* nome de variável */
   case 'N':
     fprintf(treeFile, "ref %s\n", ((struct symref *)a)->s->name);
     dumpast(searchAST(((struct symref *)a)->s->name), level, treeFile);
     break;
-
-    /* declaração */
   case '=':
     fprintf(treeFile, "= %s\n", ((struct symref *)a)->s->name);
     dumpast(((struct symasgn *)a)->v, level, treeFile);
     return;
-
-    /* expressões */
   case '+':
     fprintf(treeFile, "op %c\n", a->nodetype);
     dumpast(a->l, level, treeFile);
@@ -639,7 +631,6 @@ void dumpast(struct ast *a, int level, FILE *treeFile)
     fprintf(treeFile, "unop %c\n", a->nodetype);
     dumpast(a->l, level, treeFile);
     return;
-
   default:
     printf("ruim %c\n", a->nodetype);
     return;
@@ -693,8 +684,8 @@ void footer(FILE *resultFile)
 {
   fputs("ret i32 0\n }", resultFile);
 }
-
-int countDECL()
+//convert asttab para allocatab
+int convertAstTabToAllocaTab()
 {
   int count = 0;
   for (int i = 0; i < NHASH; i++)
@@ -725,7 +716,7 @@ int searchAllocaTab(char *name)
 void writeAlloca(FILE *resultFile)
 {
   //Realiza a contagem de alocações de acordo com a quantidade de declarações
-  int count = countDECL();
+  int count = convertAstTabToAllocaTab();
   for (int i = 1; i <= count; i++)
     fprintf(resultFile, "%s%d = alloca %s, align 4\n", percent, i, tipos[allocatab[i - 1].tipo]);
 }
@@ -755,10 +746,6 @@ char *writeOpFloatingPoint(char op[])
 
 void writeOp(FILE *resultFile, char op[], char type[], struct ast *a)
 {
-
-  //Operation:%d\n", isLoadLastOperation);
-  //type = (isLoadLastOperation == 1) ? tipos[typeOfLastVariable] : type;
-
   int regLeft = converter(a->l, resultFile);
   int regRight = converter(a->r, resultFile);
   if (strcmp(type, "i32") == 0)
@@ -774,7 +761,7 @@ void writeOp(FILE *resultFile, char op[], char type[], struct ast *a)
     fprintf(resultFile, "\n%s%d = %s  %s %s%d, %s%d\n", percent, num_register, newOp, type, percent, regLeft, percent, regRight);
   }
 }
-
+//Retorna se o array de declarações já contem aquela declaração
 int declarationsContains(int num)
 {
   for (int i = 0; i < countDeclarations; i++)
@@ -784,25 +771,25 @@ int declarationsContains(int num)
   }
   return 0;
 }
-
+//Utilizada para escrever instruções print
 void writePrint(FILE *resultFile, char type[])
 {
-  if (declarationsContains(4) == 0)
-    declarations[countDeclarations++] = 4;
+  if (declarationsContains(PRINT) == 0)
+    declarations[countDeclarations++] = PRINT;
   if (typeOfLastVariable == 1)
   {
     fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i32 %s%d)\n", percent, num_register, percent, num_register - 1);
-    if (declarationsContains(2) == 0)
-      declarations[countDeclarations++] = 2;
+    if (declarationsContains(PRINT_INT) == 0)
+      declarations[countDeclarations++] = PRINT_INT;
   }
   else
   {
     fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), double %s%d)\n", percent, num_register, percent, num_register - 1);
-    if (declarationsContains(3) == 0)
-      declarations[countDeclarations++] = 3;
+    if (declarationsContains(PRINT_DOUBLE) == 0)
+      declarations[countDeclarations++] = PRINT_DOUBLE;
   }
 }
-
+//Converter a AST em IR
 int converter(struct ast *a, FILE *resultFile)
 {
   int reg;
@@ -811,13 +798,10 @@ int converter(struct ast *a, FILE *resultFile)
     yyerror("Erro interno, CONVERTER recebendo arvore NULA");
     return -1;
   }
-  char type[6];
+  char type[6]; //Armazena o tipo da variável/constante - i32 ou double
   switch (a->nodetype)
   {
-  /* constante */
   case 'K':
-    isLoadLastOperation = 0;
-    //printf("K");
     strcpy(type, tipos[isInteger(((struct numval *)a)->number)]);
     fprintf(resultFile, "\n%s%d = alloca %s, align 4\n", percent, num_register, type);
     if (strcmp(type, "i32") == 0)
@@ -828,35 +812,24 @@ int converter(struct ast *a, FILE *resultFile)
     fprintf(resultFile, "%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_register - 1);
     reg = num_register;
     break;
-  /* nome de variavel */
   case 'N':
-    //printf("LOAD\n");
     typeOfLastVariable = allocatab[searchAllocaTab(getNameVariable(a))].tipo;
     strcpy(type, tipos[typeOfLastVariable]);
     int num_registrador = allocatab[searchAllocaTab(getNameVariable(a))].num_registrado;
     fprintf(resultFile, "\n%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_registrador);
-    //reg = allocatab[searchAllocaTab(((struct symref *)a)->s->name)].num_registrado;
     reg = num_register;
     break;
   case 'p':
-    //printf("P");
-    //isLoadLastOperation = 1;
     converter(((struct symasgn *)a)->v, resultFile);
-    //strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
     writePrint(resultFile, type);
     reg = num_register;
     break;
-  /* declaração */
   case '=':
-    //printf("=");
-    //isLoadLastOperation = 0;
     reg = converter(((struct symasgn *)a)->v, resultFile);
     strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
-    //if (strcmp(type, "double") == 0)
     num_register--;
     fprintf(resultFile, "store %s %s%d , %s* %s%d, align 4\n", type, percent, num_register, type, percent, ++reg_var);
     break;
-  /* expressões */
   case '+':
     strcpy(type, tipos[isInteger(eval(a->l))]);
     writeOp(resultFile, "add", type, a);
@@ -865,7 +838,6 @@ int converter(struct ast *a, FILE *resultFile)
   case '-':
     strcpy(type, tipos[isInteger(eval(a->l))]);
     writeOp(resultFile, "sub", type, a);
-    //num_register--;
     reg = num_register;
     break;
   case '*':
@@ -900,8 +872,8 @@ int converter(struct ast *a, FILE *resultFile)
       fprintf(resultFile, "%s%d = fptosi double %s%d to i32\n", percent, num_register, percent, num_register - 1);
     }
 
-    if (declarationsContains(1) == 0)
-      declarations[num_register] = 1;
+    if (declarationsContains(POW) == 0)
+      declarations[num_register] = POW;
     reg = num_register;
     break;
   case 'M':
@@ -914,7 +886,7 @@ int converter(struct ast *a, FILE *resultFile)
   num_register++;
   return reg;
 }
-
+//Escreve as instruções IR, iterando sobre a tabela de ast
 void writeIR(FILE *resultFile)
 {
   for (int i = 0; i < position; i++)
@@ -925,23 +897,22 @@ void writeIR(FILE *resultFile)
     }
   }
 }
-
+//Escreve as declarações
 void writeDeclares(FILE *resultFile)
 {
   for (int i = 0; i < NHASH; i++)
   {
-    if (declarations[i] == 1)
+    if (declarations[i] == POW)
       fprintf(resultFile, "declare double @pow(double, double)\n");
-    if (declarations[i] == 4)
+    if (declarations[i] == PRINT)
       fprintf(resultFile, "declare i32 @printf(i8*, ...) #1\n");
-    if (declarations[i] == 2)
+    if (declarations[i] == PRINT_INT)
       fprintf(resultFile, "@.str = private unnamed_addr constant [3 x i8] c\"%s%s\\00\", align 1\n", "%", "d");
-
-    if (declarations[i] == 3)
+    if (declarations[i] == PRINT_DOUBLE)
       fprintf(resultFile, "@.str.1 = private unnamed_addr constant [3 x i8] c\"%s%s\\00\", align 1\n", "%", "f");
   }
 }
-
+//cria o arquivo
 void createFile(FILE *resultFile)
 {
   writeHeader(resultFile);
@@ -983,7 +954,7 @@ int main(int argc, char **argv)
     }
   }
 
-  if (flag_o == 0)
+  if (flag_o == 0 && flag_h == 0)
   {
     printf("É necessário passar -o \n");
     exit(0);
@@ -992,21 +963,16 @@ int main(int argc, char **argv)
   if (flag_a == 1 && flag_o == 1)
   {
     treeFile = fopen(argv[2], "w+");
+    resultFile = fopen(argv[4], "w+");
 
-    if (treeFile == NULL)
+    if (treeFile == NULL || resultFile == NULL)
     {
       printf("Não foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
       return 1;
     }
-    //showAST();
-    writeAST(treeFile);
-    fclose(treeFile);
-
-    resultFile = fopen(argv[4], "w+");
   }
   else if (flag_o == 1)
   {
-    printf("NOME:%s\n", argv[2]);
     resultFile = fopen(argv[2], "w+");
   }
 
@@ -1014,7 +980,8 @@ int main(int argc, char **argv)
   {
     printf("-a <YYY> imprime a árvore sintática abstrata (opcional)\n");
     printf("-o <XXX> nome do arquivo de saída\n");
-    printf("-h ajuda");
+    printf("-h ajuda\n");
+    exit(0);
   }
 
   if (file == NULL)
@@ -1025,11 +992,16 @@ int main(int argc, char **argv)
   yyin = file;
 
   yyparse();
-  //showAST();
   if (hasErrorOnAST != 1)
   {
     createFile(resultFile);
     fclose(resultFile);
     system("clang resultado.ll -lm");
+
+    if (flag_a == 1)
+    {
+      writeAST(treeFile);
+      fclose(treeFile);
+    }
   }
 }
