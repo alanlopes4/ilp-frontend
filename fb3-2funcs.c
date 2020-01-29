@@ -565,7 +565,7 @@ int debug = 0;
 void dumpast(struct ast *a, int level, FILE *treeFile)
 {
 
-  fprintf(treeFile, "%*s", 2 * level, ""); 
+  fprintf(treeFile, "%*s", 2 * level, "");
   level++;
 
   if (!a)
@@ -778,13 +778,13 @@ void writePrint(FILE *resultFile, char type[])
     declarations[countDeclarations++] = PRINT;
   if (typeOfLastVariable == 1)
   {
-    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), i32 %s%d)\n", percent, num_register, percent, num_register - 1);
+    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), i32 %s%d)\n", percent, num_register, percent, num_register - 1);
     if (declarationsContains(PRINT_INT) == 0)
       declarations[countDeclarations++] = PRINT_INT;
   }
   else
   {
-    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @.str, i32 0, i32 0), double %s%d)\n", percent, num_register, percent, num_register - 1);
+    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), double %s%d)\n", percent, num_register, percent, num_register - 1);
     if (declarationsContains(PRINT_DOUBLE) == 0)
       declarations[countDeclarations++] = PRINT_DOUBLE;
   }
@@ -907,9 +907,9 @@ void writeDeclares(FILE *resultFile)
     if (declarations[i] == PRINT)
       fprintf(resultFile, "declare i32 @printf(i8*, ...) #1\n");
     if (declarations[i] == PRINT_INT)
-      fprintf(resultFile, "@.str = private unnamed_addr constant [3 x i8] c\"%s%s\\00\", align 1\n", "%", "d");
+      fprintf(resultFile, "@.str = private unnamed_addr constant [4 x i8] c\"%s%s\\0A\\00\", align 1\n", "%", "d");
     if (declarations[i] == PRINT_DOUBLE)
-      fprintf(resultFile, "@.str.1 = private unnamed_addr constant [3 x i8] c\"%s%s\\00\", align 1\n", "%", "f");
+      fprintf(resultFile, "@.str.1 = private unnamed_addr constant [4 x i8] c\"%s%s\\0A\\00\", align 1\n", "%", "f");
   }
 }
 //cria o arquivo
@@ -930,8 +930,7 @@ int main(int argc, char **argv)
 
   int flag_a = 0, flag_o = 0, flag_h = 0;
 
-  //FILE *file = fopen(argv[1], "r");
-  FILE *file = fopen("programa.txt", "r");
+  FILE *file;
   FILE *resultFile;
   FILE *treeFile;
 
@@ -941,9 +940,15 @@ int main(int argc, char **argv)
     {
     case 'a':
       flag_a = 1;
+      treeFile = fopen(optarg, "w+");
+      printf("tree:%s\n", optarg);
       break;
     case 'o':
       flag_o = 1;
+      char * nameResultFile = strdup(optarg);
+      strcat(nameResultFile, ".ll");
+      resultFile = fopen(nameResultFile, "w+");
+      printf("result:%s\n", optarg);
       break;
     case 'h':
       flag_h = 1;
@@ -959,21 +964,24 @@ int main(int argc, char **argv)
     printf("É necessário passar -o \n");
     exit(0);
   }
-
+  int num_file = 4;
   if (flag_a == 1 && flag_o == 1)
   {
-    treeFile = fopen(argv[2], "w+");
-    resultFile = fopen(argv[4], "w+");
 
+    file = fopen(argv[5], "r");
+    printf("file:%s\n", argv[5]);
     if (treeFile == NULL || resultFile == NULL)
     {
-      printf("Não foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
+      printf(" aqui! \nNão foi possível abrir o arquivo!\n Por favor verifique se o arquivo existe. \n");
       return 1;
     }
   }
   else if (flag_o == 1)
   {
-    resultFile = fopen(argv[2], "w+");
+    file = fopen(argv[3], "r");
+    num_file = 2;
+    printf("file:%s\n", argv[3]);
+
   }
 
   if (flag_h == 1)
@@ -996,7 +1004,15 @@ int main(int argc, char **argv)
   {
     createFile(resultFile);
     fclose(resultFile);
-    system("clang resultado.ll -lm");
+    char comando[100];
+    strcat(comando, "clang ");
+    strcat(comando, argv[num_file]);
+    strcat(comando, ".ll ");
+    strcat(comando, "-o ");
+    strcat(comando, argv[num_file]);
+    strcat(comando, " -lm");
+    printf("COMANDO:%s\n", comando);
+    system(comando);
 
     if (flag_a == 1)
     {
