@@ -61,10 +61,12 @@ void insertASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
 {
   a->v = v;
   asttab[position].name = s->name;
-  asttab[position].value = eval(a->v);
+  //asttab[position].value = eval(a->v);
   asttab[position].a = malloc(sizeof(struct symasgn));
   asttab[position].a = (struct ast *)a;
-  asttab[position].valuetype = isInteger(eval(a->v));
+  asttab[position].valuetype = listTypes[0];
+
+  //asttab[position].valuetype = isInteger(eval(a->v));
   position++;
 }
 
@@ -122,8 +124,10 @@ void insertListTypes(struct symref *a, struct symbol *s)
 {
   int p = lookupAST(a->s->name);
 
-  if (p != -1)
+  if (p != -1){
     listTypes[positionListTypes++] = asttab[p].valuetype;
+    a->s->valuetype = asttab[p].valuetype;
+  }
   else
   {
     showErro("A variavel %s nao foi declarada\n");
@@ -168,6 +172,22 @@ int checkOperation(double num1, double num2)
 
 void updateASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
 {
+
+  int idx = lookupAST(s->name);
+
+  if (idx != -1 && listTypes[0] != asttab[idx].valuetype)
+  {
+    showErro("Atribuição inválida\n");
+    exit(0);
+  }
+
+  //Verifica se todos os tipos são iguais
+  if (checklistTypes() == -1)
+  {
+    showErro("Variável de tipos diferentes\n");
+    exit(0);
+  }
+
   //Atribuindo a arvore na tabela de arvore
   if (position != 0)
   {
@@ -175,7 +195,8 @@ void updateASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
     if (p != -1)
     { //Elemento econtrado na tabela
       //Se n tiverem o mesmo tipo (uma for inteiro  e a outra real)
-      if (asttab[p].valuetype != isInteger(eval(v)))
+      //if (asttab[p].valuetype != isInteger(eval(v)))
+      if (checklistTypes() == -1)
       {
         showErro("Variável de tipos diferentes\n");
         a->v = asttab[p].a;
@@ -186,7 +207,8 @@ void updateASTTab(struct symasgn *a, struct ast *v, struct symbol *s)
         {           //Caso não tenha erro
           a->v = v; //atribuindo o valor
           asttab[p].name = s->name;
-          asttab[p].value = eval(a->v);
+          asttab[p].valuetype = listTypes[0];
+          //asttab[p].value = eval(a->v);
           asttab[p].a = malloc(sizeof(struct symasgn));
           asttab[p].a = (struct ast *)a;
         }
@@ -237,6 +259,7 @@ void showAST()
   {
     if (strlen(asttab[i].name) > 0)
     {
+      //printf("symbol:%s value:%lf valuetype:%d\n",s->name, s->value, s->valuetype);
       printf("%s %d %c %lf\n", asttab[i].name, asttab[i].valuetype, asttab[i].a->nodetype, asttab[i].value);
     }
   }
@@ -326,21 +349,28 @@ void newprint(struct ast *arv)
     exit(0);
   }
 
+  if (checklistTypes() == -1)
+  {
+    showErro("Operação com tipos incompatíveis\n");
+    exit(0);
+  }
+
   //Caracterizando um print
   a->nodetype = 'p';
   s->name = "print";
-  s->valuetype = isInteger(eval(a->v));
+  s->valuetype = listTypes[0];
   a->s = s;
 
   //Alocando o print
   a->v = arv;
-  a->s->value = eval(a->v);
+  //a->s->value = eval(a->v);
   asttab[position].name = s->name;
   asttab[position].value = a->s->value;
   asttab[position].a = malloc(sizeof(struct ast));
   asttab[position].a = (struct ast *)a;
-  asttab[position].valuetype = isInteger(eval(a->v));
+  asttab[position].valuetype = listTypes[0];
   position++;
+  positionListTypes = 0;
 }
 
 struct ast *
@@ -356,6 +386,7 @@ newnum(double d)
   }
   a->nodetype = 'K';
   a->number = d;
+  a->valuetype = isInteger(d);
   //Armazenando o tipo do número
   listTypes[positionListTypes++] = isInteger(d);
 
@@ -394,7 +425,7 @@ newasgn(struct symbol *s, struct ast *v)
   a->nodetype = '=';
   a->s = s;
   a->v = v;
-  a->s->value = eval(a->v);
+  //a->s->value = eval(a->v);
 
   updateASTTab(a, v, s);
 
@@ -784,11 +815,12 @@ void writePrint(FILE *resultFile, char type[])
   }
   else
   {
-    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str, i32 0, i32 0), double %s%d)\n", percent, num_register, percent, num_register - 1);
+    fprintf(resultFile, "%s%d = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.1, i32 0, i32 0), double %s%d)\n", percent, num_register, percent, num_register - 1);
     if (declarationsContains(PRINT_DOUBLE) == 0)
       declarations[countDeclarations++] = PRINT_DOUBLE;
   }
 }
+int first = 1;
 //Converter a AST em IR
 int converter(struct ast *a, FILE *resultFile)
 {
@@ -802,7 +834,7 @@ int converter(struct ast *a, FILE *resultFile)
   switch (a->nodetype)
   {
   case 'K':
-    strcpy(type, tipos[isInteger(((struct numval *)a)->number)]);
+    strcpy(type, tipos[typeOfLastVariable]);
     fprintf(resultFile, "\n%s%d = alloca %s, align 4\n", percent, num_register, type);
     if (strcmp(type, "i32") == 0)
       fprintf(resultFile, "store %s %.0lf, %s* %s%d, align 4\n", type, ((struct numval *)a)->number, type, percent, num_register);
@@ -813,7 +845,6 @@ int converter(struct ast *a, FILE *resultFile)
     reg = num_register;
     break;
   case 'N':
-    typeOfLastVariable = allocatab[searchAllocaTab(getNameVariable(a))].tipo;
     strcpy(type, tipos[typeOfLastVariable]);
     int num_registrador = allocatab[searchAllocaTab(getNameVariable(a))].num_registrado;
     fprintf(resultFile, "\n%s%d = load %s, %s*  %s%d, align 4\n", percent, num_register, type, type, percent, num_registrador);
@@ -826,32 +857,32 @@ int converter(struct ast *a, FILE *resultFile)
     break;
   case '=':
     reg = converter(((struct symasgn *)a)->v, resultFile);
-    strcpy(type, tipos[isInteger(eval(((struct symasgn *)a)->v))]);
+    strcpy(type, tipos[typeOfLastVariable]);
     num_register--;
     fprintf(resultFile, "store %s %s%d , %s* %s%d, align 4\n", type, percent, num_register, type, percent, ++reg_var);
     break;
   case '+':
-    strcpy(type, tipos[isInteger(eval(a->l))]);
+    strcpy(type, tipos[typeOfLastVariable]);
     writeOp(resultFile, "add", type, a);
     reg = num_register;
     break;
   case '-':
-    strcpy(type, tipos[isInteger(eval(a->l))]);
+    strcpy(type, tipos[typeOfLastVariable]);
     writeOp(resultFile, "sub", type, a);
     reg = num_register;
     break;
   case '*':
-    strcpy(type, tipos[isInteger(eval(a->l))]);
+    strcpy(type, tipos[typeOfLastVariable]);
     writeOp(resultFile, "mul", type, a);
     reg = num_register;
     break;
   case '/':
-    strcpy(type, tipos[isInteger(eval(a->l))]);
+    strcpy(type, tipos[typeOfLastVariable]);
     writeOp(resultFile, "sdiv", type, a);
     reg = num_register;
     break;
   case '^':
-    strcpy(type, tipos[isInteger(eval(a->l))]);
+    strcpy(type, tipos[typeOfLastVariable]);
     int regLeft = converter(a->l, resultFile);
     int regRight = converter(a->r, resultFile);
 
@@ -893,6 +924,7 @@ void writeIR(FILE *resultFile)
   {
     if (strlen(asttab[i].name) > 0)
     {
+      typeOfLastVariable = asttab[i].valuetype;
       converter(asttab[i].a, resultFile);
     }
   }
@@ -945,7 +977,7 @@ int main(int argc, char **argv)
       break;
     case 'o':
       flag_o = 1;
-      char * nameResultFile = strdup(optarg);
+      char *nameResultFile = strdup(optarg);
       strcat(nameResultFile, ".ll");
       resultFile = fopen(nameResultFile, "w+");
       printf("result:%s\n", optarg);
@@ -981,7 +1013,6 @@ int main(int argc, char **argv)
     file = fopen(argv[3], "r");
     num_file = 2;
     printf("file:%s\n", argv[3]);
-
   }
 
   if (flag_h == 1)
@@ -1000,6 +1031,7 @@ int main(int argc, char **argv)
   yyin = file;
 
   yyparse();
+  //showAST();
   if (hasErrorOnAST != 1)
   {
     createFile(resultFile);

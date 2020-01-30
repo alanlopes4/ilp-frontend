@@ -40,6 +40,7 @@ struct ast {
 struct numval {
   int nodetype;			/* type K */
   double number;
+  int valuetype;
 };
 
 struct symref {
